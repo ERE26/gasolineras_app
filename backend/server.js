@@ -104,7 +104,7 @@ app.get("/api/filters", async (req, res) => {
   }
 });
 
-// Gasolineras cercanas a una ubicación
+// Gasolineras cercanas a una ubicación, sin PostGIS
 app.get("/api/nearby", async (req, res) => {
   try {
     const lat = parseNumber(req.query.lat, null);
@@ -121,40 +121,48 @@ app.get("/api/nearby", async (req, res) => {
 
     const result = await pool.query(
       `
-      SELECT 
-        s.id,
-        s.external_id,
-        s.name,
-        s.brand,
-        s.address,
-        s.province,
-        s.municipality,
-        s.postal_code,
-        s.schedule,
-        s.latitude,
-        s.longitude,
-        p.price,
-        p.fuel_type,
-        p.captured_at,
-        ST_Distance(
-          s.location,
-          ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography
-        ) AS distance_meters
-      FROM stations s
-      JOIN LATERAL (
-        SELECT fuel_type, price, captured_at
-        FROM prices
-        WHERE prices.station_id = s.id
-          AND prices.fuel_type = $4
-        ORDER BY captured_at DESC
-        LIMIT 1
-      ) p ON true
-      WHERE ST_DWithin(
-        s.location,
-        ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,
-        $3
+      WITH stations_with_distance AS (
+        SELECT 
+          s.id,
+          s.external_id,
+          s.name,
+          s.brand,
+          s.address,
+          s.province,
+          s.municipality,
+          s.postal_code,
+          s.schedule,
+          s.latitude,
+          s.longitude,
+          p.price,
+          p.fuel_type,
+          p.captured_at,
+          (
+            6371000 * 2 * ASIN(
+              SQRT(
+                POWER(SIN(RADIANS((s.latitude - $1) / 2)), 2) +
+                COS(RADIANS($1)) *
+                COS(RADIANS(s.latitude)) *
+                POWER(SIN(RADIANS((s.longitude - $2) / 2)), 2)
+              )
+            )
+          ) AS distance_meters
+        FROM stations s
+        JOIN LATERAL (
+          SELECT fuel_type, price, captured_at
+          FROM prices
+          WHERE prices.station_id = s.id
+            AND prices.fuel_type = $4
+          ORDER BY captured_at DESC
+          LIMIT 1
+        ) p ON true
+        WHERE s.latitude IS NOT NULL
+          AND s.longitude IS NOT NULL
       )
-      ORDER BY p.price ASC, distance_meters ASC
+      SELECT *
+      FROM stations_with_distance
+      WHERE distance_meters <= $3
+      ORDER BY price ASC, distance_meters ASC
       LIMIT $5
       `,
       [lat, lon, radius, fuel, limit]

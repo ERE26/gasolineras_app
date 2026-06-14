@@ -5,10 +5,7 @@ import { pool } from "./db.js";
 function parseSpanishNumber(value) {
   if (!value) return null;
 
-  const cleaned = String(value)
-    .trim()
-    .replace(",", ".");
-
+  const cleaned = String(value).trim().replace(",", ".");
   const number = Number(cleaned);
 
   return Number.isFinite(number) ? number : null;
@@ -40,7 +37,6 @@ export async function importGeoportalData() {
 
     await client.query("BEGIN");
 
-    // Evitamos duplicar precios del mismo día
     await client.query(`
       DELETE FROM prices
       WHERE captured_at::date = CURRENT_DATE
@@ -66,13 +62,10 @@ export async function importGeoportalData() {
           schedule,
           latitude,
           longitude,
-          location,
           updated_at
         )
         VALUES (
-          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-          ST_SetSRID(ST_MakePoint($10,$9),4326)::geography,
-          NOW()
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW()
         )
         ON CONFLICT (external_id)
         DO UPDATE SET
@@ -85,7 +78,6 @@ export async function importGeoportalData() {
           schedule = EXCLUDED.schedule,
           latitude = EXCLUDED.latitude,
           longitude = EXCLUDED.longitude,
-          location = EXCLUDED.location,
           updated_at = NOW()
         RETURNING id
         `,
@@ -146,7 +138,9 @@ export async function importGeoportalData() {
   } finally {
     client.release();
   }
-}const __filename = fileURLToPath(import.meta.url);
+}
+
+const __filename = fileURLToPath(import.meta.url);
 
 if (process.argv[1] === __filename) {
   importGeoportalData()

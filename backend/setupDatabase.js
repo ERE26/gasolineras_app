@@ -4,8 +4,6 @@ async function setupDatabase() {
   console.log("Preparando base de datos...");
 
   await pool.query(`
-    CREATE EXTENSION IF NOT EXISTS postgis;
-
     CREATE TABLE IF NOT EXISTS stations (
       id SERIAL PRIMARY KEY,
       external_id TEXT UNIQUE,
@@ -18,7 +16,6 @@ async function setupDatabase() {
       schedule TEXT,
       latitude DOUBLE PRECISION,
       longitude DOUBLE PRECISION,
-      location GEOGRAPHY(Point, 4326),
       updated_at TIMESTAMP DEFAULT NOW()
     );
 
@@ -29,9 +26,6 @@ async function setupDatabase() {
       price NUMERIC(6,3),
       captured_at TIMESTAMP DEFAULT NOW()
     );
-
-    CREATE INDEX IF NOT EXISTS idx_stations_location
-    ON stations USING GIST(location);
 
     CREATE INDEX IF NOT EXISTS idx_prices_fuel
     ON prices(fuel_type);
@@ -44,15 +38,16 @@ async function setupDatabase() {
 
     CREATE INDEX IF NOT EXISTS idx_stations_province_municipality
     ON stations(province, municipality);
+
+    CREATE INDEX IF NOT EXISTS idx_stations_lat_lon
+    ON stations(latitude, longitude);
   `);
 
   console.log("Base de datos preparada.");
 }
 
 setupDatabase()
-  .then(() => {
-    process.exit(0);
-  })
+  .then(() => process.exit(0))
   .catch((error) => {
     console.error("Error preparando base de datos:", error);
     process.exit(1);
