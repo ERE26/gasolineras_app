@@ -1,8 +1,8 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import TopNav from "./components/TopNav";
 
 type Summary = {
   totalStations: number;
@@ -30,10 +30,6 @@ type CheapestSummary = {
   canarias: Station[];
 };
 
-const GasMap = dynamic(() => import("./components/GasMap"), {
-  ssr: false,
-});
-
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 function formatDate(value: string | null | undefined) {
@@ -49,7 +45,7 @@ function formatDate(value: string | null | undefined) {
 
 function MiniStation({ station, index }: { station: Station; index: number }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-black text-emerald-600">#{index + 1} más barata</p>
@@ -90,98 +86,71 @@ export default function Home() {
     loadData();
   }, []);
 
-  const mapStations = useMemo(() => {
-    if (!cheapest) return [];
-    return [...cheapest.peninsulaBaleares.slice(0, 3), ...cheapest.canarias.slice(0, 3)];
-  }, [cheapest]);
-
   return (
     <main className="min-h-screen bg-[#f7f9fc] text-slate-950">
-      <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-blue-500 text-xl font-black text-white">
-              G
-            </div>
-            <div>
-              <p className="text-lg font-black">Gasolineras App</p>
-              <p className="text-xs text-slate-500">Precios oficiales en España</p>
-            </div>
-          </Link>
-
-          <nav className="flex items-center gap-2 text-sm font-bold">
-            <Link href="/buscar" className="rounded-full bg-slate-950 px-4 py-2 text-white hover:bg-slate-800">
-              Buscar
-            </Link>
-            <a href="#mas-baratas" className="rounded-full px-4 py-2 text-slate-700 hover:bg-slate-100">
-              Más baratas
-            </a>
-          </nav>
-        </div>
-      </header>
+      <TopNav />
 
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,#bbf7d0,transparent_34%),radial-gradient(circle_at_top_right,#bfdbfe,transparent_38%),linear-gradient(135deg,#ffffff,#f8fafc)]" />
-        <div className="relative mx-auto grid max-w-7xl gap-10 px-6 py-14 lg:grid-cols-[1.05fr_.95fr] lg:py-20">
-          <div>
+
+        <div className="relative mx-auto max-w-7xl px-6 py-14 lg:py-20">
+          <div className="mx-auto max-w-4xl text-center">
             <div className="mb-5 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700">
               Datos oficiales · actualización automática
             </div>
 
             <h1 className="text-5xl font-black leading-tight tracking-tight md:text-6xl">
-              Reposta mejor. Ahorra antes de arrancar.
+              Encuentra la gasolinera más barata cerca de ti.
             </h1>
 
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-              Encuentra gasolineras baratas por ubicación, provincia, marca o combustible.
-              Compara precios, calcula el ahorro de tu depósito y decide si te compensa ir.
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-600">
+              Compara precios por zona, marca y combustible. Guarda tus vehículos, calcula el ahorro real
+              y usa el analizador para decidir dónde te compensa repostar.
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-3 text-sm font-black text-slate-600">
+            <div className="mt-6 flex flex-wrap justify-center gap-2 text-xs font-black text-slate-600">
               <span className="rounded-full bg-white px-4 py-2 shadow-sm">
-                {summary?.totalStations?.toLocaleString("es-ES") ?? "-"} estaciones registradas
+                {summary?.totalStations?.toLocaleString("es-ES") ?? "-"} estaciones
               </span>
               <span className="rounded-full bg-white px-4 py-2 shadow-sm">
-                {summary?.totalPrices?.toLocaleString("es-ES") ?? "-"} precios analizados
+                {summary?.totalPrices?.toLocaleString("es-ES") ?? "-"} precios
               </span>
               <span className="rounded-full bg-white px-4 py-2 shadow-sm">
                 Actualizado: {formatDate(summary?.lastUpdate)}
               </span>
             </div>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-9">
               <Link
                 href="/buscar"
-                className="rounded-2xl bg-slate-950 px-6 py-4 text-center font-black text-white shadow-xl hover:bg-slate-800"
+                className="inline-flex rounded-[2rem] bg-slate-950 px-10 py-6 text-xl font-black text-white shadow-2xl transition hover:-translate-y-0.5 hover:bg-slate-800 md:text-2xl"
               >
-                Buscar gasolineras
-              </Link>
-              <Link
-                href="/buscar?quick=nearby95"
-                className="rounded-2xl border border-slate-200 bg-white px-6 py-4 text-center font-black text-slate-900 shadow-sm hover:bg-slate-50"
-              >
-                Gasolina 95 cerca de mí
+                Buscar gasolineras cerca de mí
               </Link>
             </div>
           </div>
 
-          <div className="grid gap-4">
-            <div className="h-[360px] overflow-hidden rounded-[2rem] border border-white bg-white shadow-2xl">
-              {mapStations.length > 0 ? (
-                <GasMap stations={mapStations} userLocation={null} />
-              ) : (
-                <div className="flex h-full items-center justify-center text-slate-500">
-                  Cargando mapa de precios...
-                </div>
-              )}
-            </div>
-            <div className="rounded-3xl border border-blue-100 bg-blue-50 p-5">
-              <p className="text-sm font-black text-blue-700">Vista rápida</p>
-              <p className="mt-1 text-sm text-slate-600">
-                El mapa muestra una selección de gasolineras baratas. Para comparar por zona,
-                combustible o marca, entra en el buscador.
-              </p>
-            </div>
+          <div className="mt-14 grid gap-5 md:grid-cols-3">
+            <Link href="/buscar" className="group rounded-[2rem] border border-emerald-100 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-3xl">📍</div>
+              <h2 className="mt-5 text-2xl font-black">Buscar gasolineras baratas</h2>
+              <p className="mt-3 text-slate-600">Busca por ubicación, dirección, provincia, municipio, marca o combustible.</p>
+              <p className="mt-5 font-black text-emerald-600 group-hover:underline">Ir al buscador →</p>
+            </Link>
+
+            <Link href="/mis-vehiculos" className="group rounded-[2rem] border border-purple-100 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100 text-3xl">🚗</div>
+              <h2 className="mt-5 text-2xl font-black">Mis vehículos</h2>
+              <p className="mt-3 text-slate-600">Guarda depósito, consumo y combustible para calcular cuánto te cuesta llenar y desplazarte.</p>
+              <p className="mt-5 font-black text-purple-600 group-hover:underline">Configurar vehículos →</p>
+            </Link>
+
+            <Link href="/analisis" className="group rounded-[2rem] border border-blue-100 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 text-3xl">🤖</div>
+              <h2 className="mt-5 text-2xl font-black">Analizador de ahorro</h2>
+              <p className="mt-3 text-slate-600">Interpreta precios, compara Canarias con Península+Baleares y decide si compensa el desvío.</p>
+              <p className="mt-5 font-black text-blue-600 group-hover:underline">Abrir análisis →</p>
+            </Link>
           </div>
         </div>
       </section>
@@ -225,27 +194,23 @@ export default function Home() {
       </section>
 
       <section className="mx-auto max-w-7xl px-6 pb-14">
-        <div className="grid gap-5 md:grid-cols-3">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-3xl">📍</p>
-            <h2 className="mt-4 text-xl font-black">Busca por zona</h2>
-            <p className="mt-2 text-slate-600">
-              Usa tu ubicación o escribe una dirección para ver gasolineras cercanas.
-            </p>
-          </div>
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-3xl">🚗</p>
-            <h2 className="mt-4 text-xl font-black">Calcula tu ahorro</h2>
-            <p className="mt-2 text-slate-600">
-              Añade tu vehículo y estima coste de depósito, autonomía y desvío.
-            </p>
-          </div>
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-3xl">🤖</p>
-            <h2 className="mt-4 text-xl font-black">Asistente de análisis</h2>
-            <p className="mt-2 text-slate-600">
-              Pregunta qué estación conviene, cómo comparar zonas o por qué cambia el precio.
-            </p>
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="grid gap-5 md:grid-cols-3">
+            <Link href="/favoritas" className="rounded-3xl bg-yellow-50 p-5 hover:bg-yellow-100">
+              <p className="text-3xl">⭐</p>
+              <h2 className="mt-3 text-xl font-black">Mis favoritas</h2>
+              <p className="mt-2 text-sm text-slate-600">Guarda tus gasolineras habituales y tenlas siempre localizadas.</p>
+            </Link>
+            <Link href="/buscar#mapa" className="rounded-3xl bg-blue-50 p-5 hover:bg-blue-100">
+              <p className="text-3xl">🗺️</p>
+              <h2 className="mt-3 text-xl font-black">Mapa siempre visible</h2>
+              <p className="mt-2 text-sm text-slate-600">Empieza en el mapa de España y se actualiza con cada búsqueda.</p>
+            </Link>
+            <Link href="/analisis" className="rounded-3xl bg-emerald-50 p-5 hover:bg-emerald-100">
+              <p className="text-3xl">💡</p>
+              <h2 className="mt-3 text-xl font-black">Consejo inteligente</h2>
+              <p className="mt-2 text-sm text-slate-600">No mires solo el precio: mira distancia, depósito, consumo y ahorro neto.</p>
+            </Link>
           </div>
         </div>
       </section>
