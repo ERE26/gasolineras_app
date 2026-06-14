@@ -1,0 +1,13 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: gasolineras_db
+    restart: always
+    environment:
+      POSTGRES_USER: gasolineras
+      POSTGRES_PASSWORD: gasolineras123
+      POSTGRES_DB: gasolineras_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./database/postgres_data:/var/lib/postgresql/data

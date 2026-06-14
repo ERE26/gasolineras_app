@@ -1,0 +1,10 @@
+{
+  "xlsUrl": "https://geoportalgasolineras.es/resources/files/preciosEESS_es.xls",
+  "htmlCheckedAt": "2026-06-13T23:45:54.581Z",
+  "warning": "fetch failed",
+  "rawXlsCache": {
+    "ok": false,
+    "warning": "fetch failed"
+  },
+  "jsonUrl": "https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/"
+}

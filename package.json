@@ -1,0 +1,18 @@
+{
+  "name": "gasolineras-espana-pro",
+  "version": "5.0.0",
+  "description": "App moderna para buscar gasolineras baratas en España usando datos oficiales del Geoportal sin dependencia xlsx vulnerable",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "refresh": "node server.js --refresh-once",
+    "audit": "npm audit"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.18.3"
+  }
+}
