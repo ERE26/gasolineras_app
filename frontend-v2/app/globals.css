@@ -1,37 +1,10 @@
 @import "tailwindcss";
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  background: #020617;
-}
-
-.leaflet-container {
-  height: 100%;
-  width: 100%;
-  background: #020617;
-}
-
-.custom-marker,
-.custom-price-marker,
-.custom-cluster,
-.user-location-marker {
-  background: transparent;
-  border: none;
-}
-
-.leaflet-popup-content-wrapper {
-  border-radius: 18px;
-}
-
-.leaflet-popup-content {
-  margin: 14px;
-}
-
-.leaflet-control-attribution {
-  font-size: 10px;
-}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+html, body { margin: 0; background: #f7f9fc; }
+body { color: #0f172a; }
+.leaflet-container { height: 100%; width: 100%; background: #eef2f7; font-family: Arial, sans-serif; }
+.custom-marker, .custom-price-marker, .custom-cluster, .user-location-marker { background: transparent; border: none; }
+.leaflet-popup-content-wrapper { border-radius: 18px; }
+.leaflet-popup-content { margin: 14px; }
+.leaflet-control-attribution { font-size: 10px; }
