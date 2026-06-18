@@ -41,35 +41,70 @@ function formatDateOnly(value: string | null | undefined) {
 export default function Home() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [cheapStations, setCheapStations] = useState<Station[]>([]);
-  const [locationStatus, setLocationStatus] = useState("Preparando ubicación...");
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [locationStatus, setLocationStatus] = useState("Permite ubicación para ranking cercano");
+  const [rankingLabel, setRankingLabel] = useState("Muestra general");
 
-  useEffect(() => {
-    async function loadHomeData() {
-      try {
-        const summaryResponse = await fetch(`${API_URL}/api/summary`);
-        const summaryData = await summaryResponse.json();
-        setSummary(summaryData);
-      } catch (error) {
-        console.error("Error cargando resumen:", error);
-      }
-
-      try {
-        const rankingResponse = await fetch(
-          `${API_URL}/api/ranking?fuel=gasolina95&limit=6`
-        );
-        const rankingData = await rankingResponse.json();
-        setCheapStations(Array.isArray(rankingData) ? rankingData : []);
-      } catch (error) {
-        console.error("Error cargando ranking inicial:", error);
-      }
+  async function loadSummary() {
+    try {
+      const summaryResponse = await fetch(`${API_URL}/api/summary`);
+      const summaryData = await summaryResponse.json();
+      setSummary(summaryData);
+    } catch (error) {
+      console.error("Error cargando resumen:", error);
     }
+  }
 
-    loadHomeData();
-  }, []);
+  async function loadGeneralRanking() {
+    try {
+      const rankingResponse = await fetch(
+        `${API_URL}/api/ranking?fuel=gasolina95&limit=5`
+      );
+      const rankingData = await rankingResponse.json();
+      setCheapStations(Array.isArray(rankingData) ? rankingData : []);
+      setRankingLabel("Muestra general");
+    } catch (error) {
+      console.error("Error cargando ranking inicial:", error);
+    }
+  }
+
+  async function loadNearbyRanking(lat: number, lon: number, radiusKm: number) {
+    try {
+      const params = new URLSearchParams({
+        lat: String(lat),
+        lon: String(lon),
+        fuel: "gasolina95",
+        radius: String(radiusKm * 1000),
+        limit: "6",
+      });
+
+      const response = await fetch(`${API_URL}/api/nearby?${params.toString()}`);
+      const data = await response.json();
+
+      const stations = Array.isArray(data) ? data : [];
+
+      if (stations.length < 4 && radiusKm === 1) {
+        return loadNearbyRanking(lat, lon, 5);
+      }
+
+      if (stations.length > 0) {
+        setCheapStations(stations);
+        setRankingLabel(`Cerca de ti · ${radiusKm} km`);
+      } else {
+        await loadGeneralRanking();
+      }
+    } catch (error) {
+      console.error("Error cargando ranking cercano:", error);
+      await loadGeneralRanking();
+    }
+  }
 
   useEffect(() => {
+    loadSummary();
+
     if (!navigator.geolocation) {
-      setLocationStatus("Activa ubicación manualmente en el buscador.");
+      setLocationStatus("Ubicación no disponible");
+      loadGeneralRanking();
       return;
     }
 
@@ -78,14 +113,20 @@ export default function Home() {
         const coords = {
           lat: position.coords.latitude,
           lon: position.coords.longitude,
-          updatedAt: new Date().toISOString(),
         };
 
-        localStorage.setItem("lastUserLocation", JSON.stringify(coords));
-        setLocationStatus("Ubicación lista para recomendaciones cercanas.");
+        setUserLocation(coords);
+        localStorage.setItem(
+          "lastUserLocation",
+          JSON.stringify({ ...coords, updatedAt: new Date().toISOString() })
+        );
+
+        setLocationStatus("Ranking calculado cerca de ti");
+        loadNearbyRanking(coords.lat, coords.lon, 1);
       },
       () => {
-        setLocationStatus("Permite la ubicación para recomendaciones más precisas.");
+        setLocationStatus("Permite ubicación para ranking cercano");
+        loadGeneralRanking();
       },
       {
         enableHighAccuracy: true,
@@ -104,10 +145,10 @@ export default function Home() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,#bbf7d0,transparent_34%),radial-gradient(circle_at_top_right,#bfdbfe,transparent_38%),linear-gradient(135deg,#ffffff,#f8fafc)]" />
 
-        <div className="relative mx-auto grid max-w-7xl gap-8 px-6 py-12 lg:grid-cols-[1.04fr_.96fr] lg:py-16">
+        <div className="relative mx-auto grid max-w-7xl gap-8 px-6 py-10 lg:grid-cols-[1.05fr_.95fr] lg:py-14">
           <div>
             <div className="mb-4 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700">
-              Datos oficiales · ubicación en tiempo real
+              ⛽ Datos oficiales · 📍 ubicación en tiempo real
             </div>
 
             <h1 className="text-5xl font-black leading-tight tracking-tight md:text-6xl">
@@ -115,9 +156,8 @@ export default function Home() {
             </h1>
 
             <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-              Compara gasolineras cercanas, guarda tus vehículos y calcula si el ahorro
-              compensa el desplazamiento. La app prioriza tu zona para no recomendarte
-              una estación lejos solo porque tenga el precio más bajo.
+              Compara estaciones cercanas, guarda tus vehículos y calcula si el ahorro
+              compensa el desplazamiento. La app prioriza tu zona para evitar recomendaciones lejanas.
             </p>
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -162,30 +202,45 @@ export default function Home() {
                 href="/buscar"
                 className="rounded-3xl bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 transition hover:-translate-y-0.5 hover:shadow-lg"
               >
-                <h3 className="text-lg font-black">1. Busca por ubicación</h3>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Escribe una calle o usa tu ubicación. Las sugerencias se priorizan cerca de ti.
-                </p>
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">📍</span>
+                  <div>
+                    <h3 className="text-lg font-black">1. Busca por ubicación</h3>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                      Escribe una calle o usa tu ubicación. Las sugerencias se priorizan cerca de ti.
+                    </p>
+                  </div>
+                </div>
               </Link>
 
               <Link
                 href="/mis-vehiculos"
                 className="rounded-3xl bg-gradient-to-br from-purple-50 to-purple-100 p-4 transition hover:-translate-y-0.5 hover:shadow-lg"
               >
-                <h3 className="text-lg font-black">2. Guarda tu vehículo</h3>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Depósito y consumo sirven para calcular el ahorro real del trayecto.
-                </p>
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">🚗</span>
+                  <div>
+                    <h3 className="text-lg font-black">2. Guarda tu vehículo</h3>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                      Depósito y consumo sirven para calcular el ahorro real del trayecto.
+                    </p>
+                  </div>
+                </div>
               </Link>
 
               <Link
                 href="/analisis"
                 className="rounded-3xl bg-gradient-to-br from-blue-50 to-blue-100 p-4 transition hover:-translate-y-0.5 hover:shadow-lg"
               >
-                <h3 className="text-lg font-black">3. Analiza si compensa</h3>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  El asistente interpreta tu última búsqueda cercana.
-                </p>
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">🧠</span>
+                  <div>
+                    <h3 className="text-lg font-black">3. Analiza si compensa</h3>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                      El asistente interpreta tu última búsqueda cercana.
+                    </p>
+                  </div>
+                </div>
               </Link>
             </div>
           </div>
@@ -194,13 +249,13 @@ export default function Home() {
 
       <section className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[.9fr_1.1fr]">
         <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-black text-emerald-600">Vista rápida</p>
+          <p className="text-sm font-black text-emerald-600">Vista rápida · {rankingLabel}</p>
           <h2 className="mt-1 text-2xl font-black">
             Gasolineras baratas detectadas
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            Es solo una muestra general. Para decidir bien, usa tu ubicación y compara
-            precio, distancia y vehículo.
+            Si permites ubicación, este ranking se calcula cerca de ti. Si no, se muestra
+            una referencia general.
           </p>
 
           <div className="mt-5 grid gap-3">
@@ -236,20 +291,7 @@ export default function Home() {
         </div>
 
         <div className="h-[430px] overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-          <GasMap stations={topStations} userLocation={null} />
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 pb-10">
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-black text-blue-600">Idea clave</p>
-          <h2 className="mt-1 text-2xl font-black">
-            El precio más bajo no siempre es el mayor ahorro.
-          </h2>
-          <p className="mt-3 max-w-4xl leading-7 text-slate-600">
-            Una gasolinera más barata puede no compensar si está lejos. Por eso la app
-            usa ubicación, radio cercano, depósito y consumo para estimar el ahorro real.
-          </p>
+          <GasMap stations={topStations} userLocation={userLocation} />
         </div>
       </section>
 

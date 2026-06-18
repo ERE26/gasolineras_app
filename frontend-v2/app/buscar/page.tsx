@@ -70,29 +70,10 @@ const fuelOptions = [
 const popularBrands = ["REPSOL", "MOEVE", "CEPSA", "GALP", "BP", "SHELL", "PLENOIL", "BALLENOIL", "PETROPRIX"];
 
 const majorCities = [
-  "madrid",
-  "barcelona",
-  "valencia",
-  "sevilla",
-  "zaragoza",
-  "malaga",
-  "málaga",
-  "murcia",
-  "palma",
-  "bilbao",
-  "alicante",
-  "valladolid",
-  "vigo",
-  "gijon",
-  "gijón",
-  "granada",
-  "elche",
-  "oviedo",
-  "cartagena",
-  "sabadell",
-  "mostoles",
-  "móstoles",
-  "santa cruz de tenerife",
+  "madrid", "barcelona", "valencia", "sevilla", "zaragoza", "malaga", "málaga",
+  "murcia", "palma", "bilbao", "alicante", "valladolid", "vigo", "gijon",
+  "gijón", "granada", "elche", "oviedo", "cartagena", "sabadell", "mostoles",
+  "móstoles", "santa cruz de tenerife",
 ];
 
 function normalize(value: string) {
@@ -134,12 +115,7 @@ function getAddressArea(address: any) {
 
 function getViewbox(lat: number, lon: number) {
   const delta = 0.35;
-  const left = lon - delta;
-  const top = lat + delta;
-  const right = lon + delta;
-  const bottom = lat - delta;
-
-  return `${left},${top},${right},${bottom}`;
+  return `${lon - delta},${lat + delta},${lon + delta},${lat - delta}`;
 }
 
 export default function SearchPage() {
@@ -162,13 +138,9 @@ export default function SearchPage() {
   const [favoriteStationIds, setFavoriteStationIds] = useState<number[]>([]);
 
   const [loading, setLoading] = useState(false);
-  const [userLocation, setUserLocation] = useState<{
-    lat: number;
-    lon: number;
-  } | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [areaInfo, setAreaInfo] = useState<AreaInfo | null>(null);
   const [referencePrice, setReferencePrice] = useState<number | null>(null);
-  const [referenceLabel, setReferenceLabel] = useState<string>("media local");
 
   async function requestUserLocation() {
     if (!navigator.geolocation) return;
@@ -183,10 +155,7 @@ export default function SearchPage() {
         setUserLocation(coords);
         localStorage.setItem(
           "lastUserLocation",
-          JSON.stringify({
-            ...coords,
-            updatedAt: new Date().toISOString(),
-          })
+          JSON.stringify({ ...coords, updatedAt: new Date().toISOString() })
         );
       },
       () => {
@@ -319,12 +288,7 @@ export default function SearchPage() {
     setFuel(vehicle.fuel);
   }
 
-  async function fetchNearby(
-    lat: number,
-    lon: number,
-    radiusKm: number,
-    selectedFuel = fuel
-  ) {
+  async function fetchNearby(lat: number, lon: number, radiusKm: number, selectedFuel = fuel) {
     const params = new URLSearchParams({
       lat: String(lat),
       lon: String(lon),
@@ -342,9 +306,7 @@ export default function SearchPage() {
   }
 
   async function loadReferenceForMunicipality(areaName: string, selectedFuel = fuel) {
-    if (!areaName || areaName === "tu zona") {
-      return null;
-    }
+    if (!areaName || areaName === "tu zona") return null;
 
     try {
       const params = new URLSearchParams({
@@ -363,8 +325,7 @@ export default function SearchPage() {
       if (prices.length === 0) return null;
 
       return prices.reduce((acc: number, price: number) => acc + price, 0) / prices.length;
-    } catch (error) {
-      console.error("Error calculando referencia local:", error);
+    } catch {
       return null;
     }
   }
@@ -407,7 +368,6 @@ export default function SearchPage() {
       setStations(nearby);
       setUserLocation({ lat, lon });
       setReferencePrice(reference);
-      setReferenceLabel(area.municipality || "tu zona");
       setAreaInfo({
         label: sourceLabel || area.label,
         municipality: area.municipality,
@@ -445,13 +405,7 @@ export default function SearchPage() {
 
   async function searchByAddress() {
     if (selectedAddress) {
-      await runSmartNearby(
-        selectedAddress.lat,
-        selectedAddress.lon,
-        selectedAddress.label,
-        fuel,
-        selectedAddress.area
-      );
+      await runSmartNearby(selectedAddress.lat, selectedAddress.lon, selectedAddress.label, fuel, selectedAddress.area);
       return;
     }
 
@@ -485,12 +439,7 @@ export default function SearchPage() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         setLoading(false);
-        await runSmartNearby(
-          position.coords.latitude,
-          position.coords.longitude,
-          "tu ubicación",
-          selectedFuel
-        );
+        await runSmartNearby(position.coords.latitude, position.coords.longitude, "tu ubicación", selectedFuel);
       },
       () => {
         alert("No se ha podido obtener tu ubicación.");
@@ -513,10 +462,7 @@ export default function SearchPage() {
     setLoading(true);
 
     try {
-      const params = new URLSearchParams({
-        fuel,
-        limit: "25",
-      });
+      const params = new URLSearchParams({ fuel, limit: "25" });
 
       if (province.trim()) params.append("province", province.trim());
       if (municipality.trim()) params.append("municipality", municipality.trim());
@@ -535,7 +481,6 @@ export default function SearchPage() {
         : null;
 
       setReferencePrice(avg);
-      setReferenceLabel(municipality || province || brand || "ranking");
 
       localStorage.setItem(
         "lastFuelSearchContext",
