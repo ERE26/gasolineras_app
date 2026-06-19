@@ -27,7 +27,7 @@ type Station = {
   detourMeters?: number;
 };
 
-type StopMode = "percent" | "near-place" | "km-before-destination" | "hours-from-start" | "km-from-start";
+type StopMode = "near-place" | "km-before-destination" | "hours-from-start" | "km-from-start";
 
 type StopForm = {
   mode: StopMode;
@@ -110,39 +110,32 @@ const stopModes: Array<{
   examples: string[];
 }> = [
   {
-    value: "percent",
-    label: "Por tramo de ruta",
-    helper: "Ej: mitad, 60%, primer tercio.",
-    placeholder: "mitad",
-    examples: ["mitad", "primer tercio", "segundo tercio", "60%", "75%"],
-  },
-  {
-    value: "near-place",
-    label: "Cerca de una ciudad",
-    helper: "Ej: Zaragoza, Albacete, Burgos.",
-    placeholder: "Zaragoza",
-    examples: ["Zaragoza", "Albacete", "Burgos", "Lleida", "Córdoba"],
-  },
-  {
-    value: "km-before-destination",
-    label: "Km antes del destino",
-    helper: "Ej: 50 = buscar 50 km antes de llegar.",
-    placeholder: "50",
-    examples: ["30", "50", "80", "100"],
-  },
-  {
     value: "hours-from-start",
-    label: "Tras X horas de viaje",
-    helper: "Ej: 2,5 = parar tras dos horas y media.",
+    label: "A X horas de salir",
+    helper: "Ej: 2 = buscar gasolineras cuando lleves unas 2 horas conduciendo.",
     placeholder: "2",
     examples: ["1,5", "2", "2,5", "3"],
   },
   {
+    value: "km-before-destination",
+    label: "A X km de llegar",
+    helper: "Ej: 80 = buscar gasolineras unos 80 km antes del destino.",
+    placeholder: "80",
+    examples: ["30", "50", "80", "100"],
+  },
+  {
     value: "km-from-start",
-    label: "Tras X km desde origen",
-    helper: "Ej: 250 = buscar a los 250 km de ruta.",
+    label: "A X km de haber salido",
+    helper: "Ej: 250 = buscar gasolineras a los 250 km desde el origen.",
     placeholder: "250",
     examples: ["100", "200", "300", "400"],
+  },
+  {
+    value: "near-place",
+    label: "En una dirección concreta",
+    helper: "Escribe una dirección, ciudad o zona y elige una sugerencia.",
+    placeholder: "Ej: Calle Mayor 10, Zaragoza",
+    examples: ["Zaragoza", "Tarancón", "Albacete", "Burgos"],
   },
 ];
 
@@ -306,7 +299,7 @@ export default function TripPlannerPage() {
   const [destination, setDestination] = useState("");
   const [fuel, setFuel] = useState("gasolina95");
   const [sortBy, setSortBy] = useState<"price" | "distance" | "balanced">("balanced");
-  const [stops, setStops] = useState<StopForm[]>([{ mode: "percent", value: "mitad" }]);
+  const [stops, setStops] = useState<StopForm[]>([{ mode: "hours-from-start", value: "2" }]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [result, setResult] = useState<TripResult | null>(null);
@@ -362,13 +355,13 @@ export default function TripPlannerPage() {
     }
 
     const defaults: StopForm[] = [
-      { mode: "percent", value: "mitad" },
       { mode: "hours-from-start", value: "2" },
       { mode: "km-before-destination", value: "80" },
+      { mode: "km-from-start", value: "250" },
       { mode: "near-place", value: "" },
     ];
 
-    setStops([...stops, defaults[stops.length] || { mode: "percent", value: "mitad" }]);
+    setStops([...stops, defaults[stops.length] || { mode: "hours-from-start", value: "2" }]);
     setShowAllStops(true);
   }
 
@@ -477,7 +470,7 @@ export default function TripPlannerPage() {
               <p className="text-sm font-black text-blue-600">Planifica tu viaje</p>
               <h1 className="text-3xl font-black">Planifica dónde repostar</h1>
               <p className="mt-2 max-w-3xl text-sm font-bold leading-6 text-slate-500">
-                Elige origen, destino y cuándo quieres parar. Buscamos estaciones cerca de la ruta.
+                Elige origen, destino y una parada sencilla: por horas, por kilómetros o por una dirección concreta.
               </p>
             </div>
 
@@ -567,7 +560,7 @@ export default function TripPlannerPage() {
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-black text-slate-500">Paso 2</p>
-                  <h2 className="text-2xl font-black">Cuándo parar</h2>
+                  <h2 className="text-2xl font-black">Paradas de repostaje</h2>
                 </div>
 
                 <div className="flex gap-2">
@@ -610,7 +603,7 @@ export default function TripPlannerPage() {
                         <div className="grid gap-3 md:grid-cols-[.9fr_1.1fr]">
                           <div>
                             <label className="mb-2 block text-xs font-black uppercase text-slate-500">
-                              Quiero parar
+                              Tipo de parada
                             </label>
                             <select
                               value={stop.mode}
@@ -626,15 +619,27 @@ export default function TripPlannerPage() {
                           </div>
 
                           <div>
-                            <label className="mb-2 block text-xs font-black uppercase text-slate-500">
-                              Valor
-                            </label>
-                            <input
-                              value={stop.value}
-                              onChange={(event) => updateStop(index, { value: event.target.value })}
-                              placeholder={mode.placeholder}
-                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                            />
+                            {stop.mode === "near-place" ? (
+                              <AddressSuggestInput
+                                label="Dirección concreta"
+                                value={stop.value}
+                                onChange={(value) => updateStop(index, { value })}
+                                placeholder={mode.placeholder}
+                                helper="Elige una sugerencia para evitar direcciones repetidas."
+                              />
+                            ) : (
+                              <>
+                                <label className="mb-2 block text-xs font-black uppercase text-slate-500">
+                                  Valor
+                                </label>
+                                <input
+                                  value={stop.value}
+                                  onChange={(event) => updateStop(index, { value: event.target.value })}
+                                  placeholder={mode.placeholder}
+                                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                                />
+                              </>
+                            )}
                           </div>
                         </div>
 
@@ -765,7 +770,7 @@ export default function TripPlannerPage() {
 
             {!result && (
               <div className="mt-5 rounded-3xl bg-slate-50 p-7 text-center text-slate-500">
-                Completa la ruta y pulsa “Analizar”. Aquí aparecerá la mejor opción.
+                Completa la ruta y pulsa “Analizar”. Aquí aparecerán las mejores gasolineras para tu parada.
               </div>
             )}
 
@@ -806,7 +811,7 @@ export default function TripPlannerPage() {
                         <p className="text-sm font-black text-blue-600">Parada {index + 1}</p>
                         <h3 className="text-lg font-black">{stop.label}</h3>
                         <p className="mt-1 text-xs font-bold text-slate-500">
-                          Gasolineras a máximo {stop.radiusKm} km.
+                          Gasolineras a máximo {stop.radiusKm} km de ese punto.
                         </p>
                       </div>
 
