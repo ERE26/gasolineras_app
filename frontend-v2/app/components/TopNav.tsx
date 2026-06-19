@@ -9,7 +9,6 @@ const navItems = [
   { href: "/planificar-viaje", label: "Planifica tu viaje" },
   { href: "/mis-vehiculos", label: "Mis vehículos" },
   { href: "/favoritas", label: "Favoritas" },
-  { href: "/analisis", label: "Análisis" },
 ];
 
 export default function TopNav() {
