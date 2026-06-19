@@ -170,6 +170,8 @@ export default function SearchPage() {
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const [favoriteMenuOpen, setFavoriteMenuOpen] = useState(false);
+  const [vehicleMenuOpen, setVehicleMenuOpen] = useState(false);
+  const [otherFuelMenuOpen, setOtherFuelMenuOpen] = useState(false);
   const [selectedFavoriteId, setSelectedFavoriteId] = useState<string | null>(null);
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
@@ -710,7 +712,7 @@ export default function SearchPage() {
       <TopNav />
 
       <section className="mx-auto max-w-7xl px-4 py-4">
-        <div className="sticky top-[68px] z-[2300] mb-4 rounded-[1.8rem] border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur">
+        <div className="relative z-[1200] mb-4 rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
           <div className="grid gap-4 xl:grid-cols-[1.25fr_.75fr]">
             <div>
               <div className="flex items-center justify-between gap-3">
@@ -825,7 +827,7 @@ export default function SearchPage() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_auto]">
+          <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
             <div className="relative">
               <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Marcas</p>
 
@@ -907,6 +909,51 @@ export default function SearchPage() {
               )}
             </div>
 
+            <div className="relative">
+              <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Mis vehículos</p>
+
+              <button
+                type="button"
+                onClick={() => setVehicleMenuOpen((open) => !open)}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-black text-slate-800 shadow-sm hover:bg-slate-50"
+              >
+                {selectedVehicleId
+                  ? vehicles.find((vehicle) => vehicle.id === selectedVehicleId)?.name || "Vehículo seleccionado"
+                  : vehicles.length > 0
+                    ? "Seleccionar vehículo"
+                    : "Sin vehículos guardados"}
+              </button>
+
+              {vehicleMenuOpen && (
+                <div className="absolute left-0 right-0 top-[76px] z-[2800] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                  {vehicles.length > 0 ? (
+                    vehicles.map((vehicle) => (
+                      <button
+                        key={vehicle.id}
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => {
+                          selectVehicle(vehicle.id);
+                          setVehicleMenuOpen(false);
+                        }}
+                        className="block w-full px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-purple-50"
+                      >
+                        <span className="font-black">{vehicle.name}</span>
+                        <span className="ml-2 text-slate-500">· {vehicle.tankLiters} L · {vehicle.consumption} L/100 km</span>
+                      </button>
+                    ))
+                  ) : (
+                    <Link
+                      href="/mis-vehiculos"
+                      className="block px-4 py-3 text-sm font-black text-purple-700 hover:bg-purple-50"
+                    >
+                      Añadir vehículo
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
+
             <button
               type="button"
               onClick={() => setAdvancedFiltersOpen((open) => !open)}
@@ -925,58 +972,44 @@ export default function SearchPage() {
 
         {advancedFiltersOpen && (
           <div className="mb-4 rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="grid gap-4 lg:grid-cols-3">
-              <div>
-                <p className="mb-2 text-sm font-black text-slate-800">Todos los combustibles</p>
-                <div className="flex flex-wrap gap-2">
-                  {fuelOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => setFuel(option.value)}
-                      className={
-                        fuel === option.value
-                          ? "rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white"
-                          : "rounded-full bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-200"
-                      }
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <div className="grid items-start gap-4 lg:grid-cols-[.75fr_1.25fr_auto]">
+              <div className="relative">
+                <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">
+                  Otros combustibles
+                </p>
 
-              <div>
-                {vehicles.length > 0 ? (
-                  <>
-                    <p className="mb-2 text-sm font-black text-slate-800">Vehículo</p>
-                    <div className="flex flex-wrap gap-2">
-                      {vehicles.map((vehicle) => (
-                        <button
-                          key={vehicle.id}
-                          onClick={() => selectVehicle(vehicle.id)}
-                          className={
-                            selectedVehicleId === vehicle.id
-                              ? "rounded-full bg-purple-600 px-3 py-2 text-xs font-black text-white"
-                              : "rounded-full bg-purple-50 px-3 py-2 text-xs font-black text-purple-700 hover:bg-purple-100"
-                          }
-                        >
-                          {vehicle.name}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className="rounded-2xl bg-purple-50 p-3 text-xs text-purple-900">
-                    Añade tu vehículo en{" "}
-                    <Link href="/mis-vehiculos" className="font-black underline">
-                      Mis vehículos
-                    </Link>{" "}
-                    para calcular ahorro real.
+                <button
+                  type="button"
+                  onClick={() => setOtherFuelMenuOpen((open) => !open)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-black text-slate-800 shadow-sm hover:bg-slate-50"
+                >
+                  {fuelOptions.slice(4).find((option) => option.value === fuel)?.label || "GLP, GNC, GNL o hidrógeno"}
+                </button>
+
+                {otherFuelMenuOpen && (
+                  <div className="absolute left-0 right-0 top-[76px] z-[2800] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                    {fuelOptions.slice(4).map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => {
+                          setFuel(option.value);
+                          setOtherFuelMenuOpen(false);
+                        }}
+                        className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-blue-50"
+                      >
+                        <span>{option.label}</span>
+                        <span className={fuel === option.value ? "text-blue-600" : "text-slate-300"}>
+                          {fuel === option.value ? "✓" : "○"}
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <AutocompleteInput
                   label="Provincia"
                   value={province}
@@ -995,6 +1028,14 @@ export default function SearchPage() {
                   suggestions={municipalities}
                 />
               </div>
+
+              <button
+                type="button"
+                onClick={loadManualRanking}
+                className="self-end rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-black text-white hover:bg-emerald-400"
+              >
+                Aplicar
+              </button>
             </div>
           </div>
         )}
@@ -1007,7 +1048,7 @@ export default function SearchPage() {
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(390px,.95fr)]">
           <section className="space-y-4 xl:order-2">
-            <div className="h-[520px] overflow-hidden rounded-[1.8rem] border border-slate-200 bg-white shadow-sm xl:sticky xl:top-[290px]">
+            <div className="h-[520px] overflow-hidden rounded-[1.8rem] border border-slate-200 bg-white shadow-sm xl:sticky xl:top-[90px]">
               <GasMap stations={stations} userLocation={userLocation} />
             </div>
           </section>
