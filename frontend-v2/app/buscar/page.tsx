@@ -624,79 +624,81 @@ export default function SearchPage() {
       <TopNav />
 
       <section className="mx-auto max-w-7xl px-5 py-5">
-        <div className="mb-4 rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="grid gap-3 lg:grid-cols-[1.15fr_.85fr]">
-            <div>
-              <p className="text-sm font-black text-blue-600">Búsqueda principal</p>
-              <h1 className="text-2xl font-black">Busca cerca de ti</h1>
-              <div className="relative mt-3">
-                <input
-                  value={searchAddress}
-                  onChange={(e) => setSearchAddress(e.target.value)}
-                  placeholder="Ej: Calle Serrano 45, Madrid"
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                />
+        <div className="mb-4 grid items-start gap-4 lg:grid-cols-[1.15fr_.85fr]">
+          <div className="rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-sm font-black text-blue-600">Búsqueda principal</p>
+            <h1 className="text-2xl font-black">Busca cerca de ti</h1>
 
-                {searchAddress.trim().length >= 3 && addressSuggestions.length > 0 && (
-                  <div className="absolute left-0 right-0 top-[54px] z-[2500] max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
-                    {addressSuggestions.map((suggestion) => (
-                      <button
-                        key={`${suggestion.lat}-${suggestion.lon}-${suggestion.label}`}
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => {
-                          setSelectedAddress(suggestion);
-                          setSearchAddress(suggestion.label);
-                          setAddressSuggestions([]);
-                        }}
-                        className="block w-full px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-blue-50"
-                      >
-                        {suggestion.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div className="relative mt-3">
+              <input
+                value={searchAddress}
+                onChange={(e) => {
+                  setSearchAddress(e.target.value);
+                  setSelectedAddress(null);
+                }}
+                placeholder="Ej: Calle Serrano 45, Madrid"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+              />
 
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <button
-                  onClick={searchByAddress}
-                  className="rounded-2xl bg-blue-600 px-4 py-3 font-black text-white shadow-sm hover:bg-blue-500"
-                >
-                  Buscar esta zona
-                </button>
-
-                <button
-                  onClick={() => loadNearby(fuel)}
-                  className="rounded-2xl bg-slate-950 px-4 py-3 font-black text-white shadow-sm hover:bg-slate-800"
-                >
-                  Usar mi ubicación
-                </button>
-              </div>
+              {searchAddress.trim().length >= 3 && addressSuggestions.length > 0 && (
+                <div className="absolute left-0 right-0 top-[54px] z-[2500] max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                  {addressSuggestions.map((suggestion) => (
+                    <button
+                      key={`${suggestion.lat}-${suggestion.lon}-${suggestion.label}`}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        setSelectedAddress(suggestion);
+                        setSearchAddress(suggestion.label);
+                        setAddressSuggestions([]);
+                      }}
+                      className="block w-full px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-blue-50"
+                    >
+                      {suggestion.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div>
-              <p className="text-sm font-black text-emerald-600">Atajos rápidos</p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                <button
-                  onClick={() => {
-                    setFuel("gasolina95");
-                    loadNearby("gasolina95");
-                  }}
-                  className="rounded-2xl bg-slate-950 px-4 py-3 text-left text-sm font-black text-white shadow-sm hover:bg-slate-800"
-                >
-                  Gasolina 95 cerca de mí
-                </button>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <button
+                onClick={searchByAddress}
+                className="rounded-2xl bg-blue-600 px-4 py-3 font-black text-white shadow-sm hover:bg-blue-500"
+              >
+                Buscar esta zona
+              </button>
 
-                <button
-                  onClick={() => {
-                    setFuel("diesel");
-                    loadNearby("diesel");
-                  }}
-                  className="rounded-2xl bg-blue-600 px-4 py-3 text-left text-sm font-black text-white shadow-sm hover:bg-blue-500"
-                >
-                  Diésel cerca de mí
-                </button>
-              </div>
+              <button
+                onClick={() => loadNearby(fuel)}
+                className="rounded-2xl bg-slate-950 px-4 py-3 font-black text-white shadow-sm hover:bg-slate-800"
+              >
+                Usar mi ubicación
+              </button>
+            </div>
+          </div>
+
+          <div className="self-start rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-sm font-black text-emerald-600">Atajos rápidos</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+              <button
+                onClick={() => {
+                  setFuel("gasolina95");
+                  loadNearby("gasolina95");
+                }}
+                className="rounded-2xl bg-slate-950 px-4 py-3 text-left text-sm font-black text-white shadow-sm hover:bg-slate-800"
+              >
+                Gasolina 95 cerca de mí
+              </button>
+
+              <button
+                onClick={() => {
+                  setFuel("diesel");
+                  loadNearby("diesel");
+                }}
+                className="rounded-2xl bg-blue-600 px-4 py-3 text-left text-sm font-black text-white shadow-sm hover:bg-blue-500"
+              >
+                Diésel cerca de mí
+              </button>
             </div>
           </div>
         </div>
@@ -792,6 +794,7 @@ export default function SearchPage() {
                   onSelect={setBrand}
                   placeholder="Repsol, Moeve, Galp, BP, Disa..."
                   suggestions={brandOptions}
+                  showSuggestionsOnFocus
                 />
 
                 <AutocompleteInput

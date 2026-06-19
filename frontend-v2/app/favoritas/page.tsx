@@ -55,14 +55,13 @@ export default function FavoritesPage() {
   const [brandSuggestions, setBrandSuggestions] = useState<string[]>(brandOptions);
   const [brandOpen, setBrandOpen] = useState(false);
 
+  const [editingId, setEditingId] = useState<string | number | null>(null);
+  const [editingName, setEditingName] = useState("");
+
   const [address, setAddress] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<AddressSuggestion | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
-
-  const [manualName, setManualName] = useState("");
-  const [manualBrand, setManualBrand] = useState("");
-  const [manualAddress, setManualAddress] = useState("");
 
   useEffect(() => {
     loadFavorites();
@@ -223,23 +222,26 @@ export default function FavoritesPage() {
     }
   }
 
-  function addManualFavorite() {
-    if (!manualName.trim()) {
-      alert("Pon nombre a la gasolinera.");
+  function startEditing(station: FavoriteStation) {
+    setEditingId(station.id);
+    setEditingName(station.name || "");
+  }
+
+  function saveEditedName(id: string | number) {
+    if (!editingName.trim()) {
+      alert("Pon un nombre para esta favorita.");
       return;
     }
 
-    const item: FavoriteStation = {
-      id: crypto.randomUUID(),
-      name: manualName.trim(),
-      brand: manualBrand.trim(),
-      address: manualAddress.trim(),
-    };
+    const next = favorites.map((item) =>
+      String(item.id) === String(id)
+        ? { ...item, name: editingName.trim() }
+        : item
+    );
 
-    saveFavorites([...favorites, item]);
-    setManualName("");
-    setManualBrand("");
-    setManualAddress("");
+    saveFavorites(next);
+    setEditingId(null);
+    setEditingName("");
   }
 
   return (
@@ -276,14 +278,46 @@ export default function FavoritesPage() {
               {favorites.map((station) => (
                 <div key={station.id} className="rounded-3xl bg-slate-50 p-4">
                   <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-black">{station.name}</p>
-                      <p className="text-sm text-slate-500">{station.brand || "Marca no indicada"}</p>
-                      {station.address && <p className="mt-1 text-sm text-slate-500">{station.address}</p>}
-                      {station.price && (
-                        <p className="mt-2 text-sm font-black text-emerald-700">
-                          Último precio visto: {Number(station.price).toFixed(3)} €/L
-                        </p>
+                    <div className="min-w-0 flex-1">
+                      {editingId !== null && String(editingId) === String(station.id) ? (
+                        <div className="space-y-3">
+                          <input
+                            value={editingName}
+                            onChange={(event) => setEditingName(event.target.value)}
+                            placeholder="Nombre personalizado"
+                            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                          />
+
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={() => saveEditedName(station.id)}
+                              className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-black text-white hover:bg-emerald-400"
+                            >
+                              Guardar nombre
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setEditingId(null);
+                                setEditingName("");
+                              }}
+                              className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-200"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="font-black">{station.name}</p>
+                          <p className="text-sm text-slate-500">{station.brand || "Marca no indicada"}</p>
+                          {station.address && <p className="mt-1 text-sm text-slate-500">{station.address}</p>}
+                          {station.price && (
+                            <p className="mt-2 text-sm font-black text-emerald-700">
+                              Último precio visto: {Number(station.price).toFixed(3)} €/L
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
 
@@ -298,6 +332,13 @@ export default function FavoritesPage() {
                           Cómo llegar
                         </a>
                       )}
+
+                      <button
+                        onClick={() => startEditing(station)}
+                        className="rounded-2xl bg-yellow-50 px-4 py-2 text-sm font-black text-yellow-700 hover:bg-yellow-100"
+                      >
+                        Renombrar
+                      </button>
 
                       <button
                         onClick={() => removeFavorite(station.id)}
@@ -430,42 +471,6 @@ export default function FavoritesPage() {
               </div>
             </div>
 
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-2xl font-black">Añadir manualmente</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Útil si no aparece en la búsqueda.
-              </p>
-
-              <div className="mt-5 space-y-4">
-                <input
-                  value={manualName}
-                  onChange={(event) => setManualName(event.target.value)}
-                  placeholder="Nombre de la gasolinera"
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                />
-
-                <input
-                  value={manualBrand}
-                  onChange={(event) => setManualBrand(event.target.value)}
-                  placeholder="Marca: Repsol, Moeve, Galp..."
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                />
-
-                <input
-                  value={manualAddress}
-                  onChange={(event) => setManualAddress(event.target.value)}
-                  placeholder="Dirección"
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                />
-
-                <button
-                  onClick={addManualFavorite}
-                  className="w-full rounded-2xl bg-yellow-300 px-4 py-3 font-black text-slate-950 hover:bg-yellow-200"
-                >
-                  Añadir favorita
-                </button>
-              </div>
-            </div>
           </section>
         </div>
       </section>
