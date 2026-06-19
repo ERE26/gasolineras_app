@@ -34,6 +34,13 @@ type StopForm = {
   value: string;
 };
 
+type Suggestion = {
+  label: string;
+  lat?: number;
+  lon?: number;
+  placeId?: string;
+};
+
 type TripResult = {
   origin: {
     label: string;
@@ -72,7 +79,7 @@ const fuelOptions = [
   { value: "glp", label: "GLP" },
 ];
 
-const destinationSuggestions = [
+const quickDestinations = [
   "Madrid",
   "Barcelona",
   "Valencia",
@@ -89,21 +96,16 @@ const destinationSuggestions = [
   "Vigo",
   "Murcia",
   "Oviedo",
-  "Gijón",
   "Salamanca",
   "Burgos",
   "Pamplona",
   "Logroño",
-  "Castellón",
-  "Benidorm",
-  "Marbella",
-  "Almería",
-  "Córdoba",
 ];
 
 const stopModes: Array<{
   value: StopMode;
   label: string;
+  shortLabel: string;
   helper: string;
   placeholder: string;
   examples: string[];
@@ -111,35 +113,40 @@ const stopModes: Array<{
   {
     value: "percent",
     label: "Por tramo de ruta",
-    helper: "Útil para parar a mitad, al primer tercio o al 70% del viaje.",
+    shortLabel: "Tramo",
+    helper: "Para parar a mitad, al primer tercio o al 70% del viaje.",
     placeholder: "Ej: mitad, 60%, primer tercio...",
     examples: ["mitad", "primer tercio", "segundo tercio", "60%", "75%"],
   },
   {
     value: "near-place",
     label: "Cerca de una ciudad",
-    helper: "La app busca el punto más cercano de la ruta a esa ciudad.",
+    shortLabel: "Ciudad",
+    helper: "Busca el punto de la ruta más cercano a esa ciudad.",
     placeholder: "Ej: Zaragoza, Albacete, Burgos...",
     examples: ["Zaragoza", "Albacete", "Burgos", "Lleida", "Córdoba"],
   },
   {
     value: "km-before-destination",
     label: "Km antes del destino",
-    helper: "Perfecto si quieres repostar antes de llegar.",
+    shortLabel: "Antes de llegar",
+    helper: "Para repostar antes de llegar al destino final.",
     placeholder: "Ej: 50",
     examples: ["30", "50", "80", "100"],
   },
   {
     value: "hours-from-start",
     label: "Tras X horas de viaje",
-    helper: "Calcula una parada aproximada según la duración total de la ruta.",
+    shortLabel: "Horas",
+    helper: "Calcula una parada aproximada tras X horas conduciendo.",
     placeholder: "Ej: 2,5",
     examples: ["1,5", "2", "2,5", "3"],
   },
   {
     value: "km-from-start",
     label: "Tras X km desde origen",
-    helper: "Útil si sabes que quieres parar tras una distancia concreta.",
+    shortLabel: "Km desde origen",
+    helper: "Para parar tras una distancia concreta desde el inicio.",
     placeholder: "Ej: 250",
     examples: ["100", "200", "300", "400"],
   },
@@ -147,19 +154,14 @@ const stopModes: Array<{
 
 function formatKm(meters?: number) {
   const value = Number(meters);
-
   if (!Number.isFinite(value)) return "-";
-
   return `${(value / 1000).toFixed(1)} km`;
 }
 
 function formatDetour(meters?: number) {
   const value = Number(meters);
-
   if (!Number.isFinite(value)) return "-";
-
   if (value < 1000) return `${Math.round(value)} m`;
-
   return `${(value / 1000).toFixed(1)} km`;
 }
 
@@ -189,17 +191,61 @@ function AddressSuggestInput({
   value,
   onChange,
   placeholder,
+  helper,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
+  helper?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const matches = destinationSuggestions
+  useEffect(() => {
+    const query = value.trim();
+
+    if (query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setLoading(true);
+
+      try {
+        const response = await fetch(`/api/address-suggest?q=${encodeURIComponent(query)}`, {
+          signal: controller.signal,
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+          setSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setSuggestions([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [value]);
+
+  const quickMatches = quickDestinations
     .filter((item) => item.toLowerCase().includes(value.trim().toLowerCase()))
-    .slice(0, 7);
+    .slice(0, 5);
+
+  const hasSuggestions = suggestions.length > 0 || quickMatches.length > 0 || loading;
 
   return (
     <div className="relative">
@@ -211,25 +257,54 @@ function AddressSuggestInput({
           onChange(event.target.value);
           setOpen(true);
         }}
+        onBlur={() => {
+          window.setTimeout(() => setOpen(false), 150);
+        }}
         placeholder={placeholder}
         className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
       />
+      {helper && <p className="mt-2 text-xs font-bold text-slate-500">{helper}</p>}
 
-      {open && value.trim().length > 0 && matches.length > 0 && (
-        <div className="absolute left-0 right-0 top-[4.7rem] z-20 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
-          {matches.map((item) => (
+      {open && value.trim().length >= 2 && hasSuggestions && (
+        <div className="absolute left-0 right-0 top-[4.6rem] z-30 max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-xl">
+          {loading && (
+            <div className="px-4 py-3 text-sm font-bold text-slate-500">
+              Buscando direcciones...
+            </div>
+          )}
+
+          {suggestions.map((item) => (
             <button
-              key={item}
+              key={item.placeId || item.label}
               type="button"
               onClick={() => {
-                onChange(item);
+                onChange(item.label);
                 setOpen(false);
               }}
-              className="block w-full px-4 py-3 text-left text-sm font-bold text-slate-700 hover:bg-slate-50"
+              className="block w-full border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50"
             >
-              {item}
+              <span className="block text-sm font-black text-slate-800">{item.label}</span>
+              <span className="mt-1 block text-xs font-bold text-slate-500">
+                Dirección encontrada por Google
+              </span>
             </button>
           ))}
+
+          {suggestions.length === 0 &&
+            !loading &&
+            quickMatches.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => {
+                  onChange(item);
+                  setOpen(false);
+                }}
+                className="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm font-black text-slate-700 hover:bg-slate-50"
+              >
+                {item}
+              </button>
+            ))}
         </div>
       )}
     </div>
@@ -329,7 +404,6 @@ export default function TripPlannerPage() {
 
   function selectVehicle(vehicleId: string) {
     setSelectedVehicleId(vehicleId);
-
     const vehicle = vehicles.find((item) => item.id === vehicleId);
 
     if (vehicle?.fuel) {
@@ -413,38 +487,67 @@ export default function TripPlannerPage() {
     <main className="min-h-screen bg-[#f7f9fc] text-slate-950">
       <TopNav />
 
-      <section className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-6 grid gap-5 lg:grid-cols-[1.1fr_.9fr]">
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-black text-emerald-600">Ruta inteligente</p>
-            <h1 className="mt-1 text-4xl font-black">Planifica tu viaje</h1>
-            <p className="mt-3 max-w-4xl leading-7 text-slate-600">
-              Mete origen, destino y cuándo quieres parar. La app calcula la ruta,
-              busca gasolineras cerca de cada parada y limita el desvío a 5 km.
-            </p>
-          </div>
+      <section className="mx-auto max-w-7xl px-6 py-7">
+        <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+          <div className="grid gap-0 lg:grid-cols-[1.05fr_.95fr]">
+            <div className="p-7 md:p-8">
+              <p className="text-sm font-black text-emerald-600">Planifica tu viaje</p>
+              <h1 className="mt-2 max-w-3xl text-4xl font-black leading-tight md:text-5xl">
+                Encuentra dónde repostar en ruta sin desviarte más de 5 km
+              </h1>
+              <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600">
+                Elige origen, destino y cuándo quieres parar. Analizamos gasolineras
+                cerca de cada punto de la ruta y te damos la recomendada.
+              </p>
 
-          <div className="rounded-[2rem] border border-emerald-100 bg-emerald-50 p-6">
-            <h2 className="text-xl font-black text-emerald-950">Qué mejora esta versión</h2>
-            <ul className="mt-3 space-y-2 text-sm font-bold leading-6 text-emerald-900">
-              <li>• Puedes entrar desde el menú superior: “Planifica”.</li>
-              <li>• Puedes parar por ciudad, por % de ruta, por km o por horas.</li>
-              <li>• El destino tiene sugerencias rápidas tipo autocompletar.</li>
-              <li>• El resultado separa recomendada y alternativas.</li>
-            </ul>
+              <div className="mt-6 grid gap-3 md:grid-cols-3">
+                <div className="rounded-3xl bg-emerald-50 p-4">
+                  <p className="font-black text-emerald-950">1. Ruta</p>
+                  <p className="mt-1 text-sm font-bold text-emerald-800">
+                    Origen y destino con sugerencias.
+                  </p>
+                </div>
+
+                <div className="rounded-3xl bg-blue-50 p-4">
+                  <p className="font-black text-blue-950">2. Paradas</p>
+                  <p className="mt-1 text-sm font-bold text-blue-800">
+                    Por ciudad, km, horas o tramo.
+                  </p>
+                </div>
+
+                <div className="rounded-3xl bg-purple-50 p-4">
+                  <p className="font-black text-purple-950">3. Resultado</p>
+                  <p className="mt-1 text-sm font-bold text-purple-800">
+                    Precio, desvío y ruta en Maps.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col justify-center bg-slate-950 p-7 text-white md:p-8">
+              <p className="text-sm font-black text-emerald-300">Criterio de recomendación</p>
+              <h2 className="mt-2 text-3xl font-black">No solo busca la más barata</h2>
+              <p className="mt-4 leading-7 text-slate-300">
+                Por defecto usa equilibrio entre precio y desvío. Así evita mandarte
+                lejos por ahorrar muy poco.
+              </p>
+
+              <div className="mt-5 rounded-3xl bg-white/10 p-4 text-sm font-bold leading-6 text-slate-200">
+                Desvío máximo aproximado: 5 km desde el punto de parada sobre la ruta.
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[.92fr_1.08fr]">
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1fr]">
           <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-black text-slate-500">Paso 1</p>
-                <h2 className="text-2xl font-black">Ruta</h2>
+                <h2 className="text-2xl font-black">Datos de ruta</h2>
               </div>
-
               <span className="rounded-full bg-slate-100 px-4 py-2 text-xs font-black text-slate-600">
-                Desvío máximo: 5 km
+                España
               </span>
             </div>
 
@@ -489,7 +592,8 @@ export default function TripPlannerPage() {
                       label="Origen escrito"
                       value={originAddress}
                       onChange={setOriginAddress}
-                      placeholder="Ej: Madrid, Calle Serrano..."
+                      placeholder="Ej: Calle Alcalá 45, Madrid..."
+                      helper="Elige una sugerencia para evitar confundir calles con el mismo nombre."
                     />
                   </div>
                 )}
@@ -499,7 +603,8 @@ export default function TripPlannerPage() {
                 label="Destino"
                 value={destination}
                 onChange={setDestination}
-                placeholder="Ej: Valencia, Málaga, San Sebastián..."
+                placeholder="Ej: Hotel en Valencia, Málaga centro..."
+                helper="Puedes escribir ciudad, dirección, hotel o zona."
               />
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -560,11 +665,6 @@ export default function TripPlannerPage() {
                   ))}
                 </div>
               </div>
-
-              <div className="rounded-3xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-                Consejo: usa “Equilibrio” si no quieres que te mande a una gasolinera
-                algo más barata pero peor situada.
-              </div>
             </div>
           </section>
 
@@ -572,9 +672,9 @@ export default function TripPlannerPage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-black text-slate-500">Paso 2</p>
-                <h2 className="text-2xl font-black">Paradas</h2>
+                <h2 className="text-2xl font-black">Cuándo quieres parar</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Puedes mezclar varios criterios en el mismo viaje.
+                  Puedes combinar varios criterios.
                 </p>
               </div>
 
@@ -582,7 +682,7 @@ export default function TripPlannerPage() {
                 onClick={addStop}
                 className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-500"
               >
-                Añadir parada
+                Añadir
               </button>
             </div>
 
@@ -605,26 +705,28 @@ export default function TripPlannerPage() {
                       )}
                     </div>
 
-                    <div className="mt-3 grid gap-3 md:grid-cols-[.9fr_1.1fr]">
-                      <select
-                        value={stop.mode}
-                        onChange={(event) => updateStop(index, { mode: event.target.value as StopMode })}
-                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                      >
-                        {stopModes.map((item) => (
-                          <option key={item.value} value={item.value}>
-                            {item.label}
-                          </option>
-                        ))}
-                      </select>
-
-                      <input
-                        value={stop.value}
-                        onChange={(event) => updateStop(index, { value: event.target.value })}
-                        placeholder={mode.placeholder}
-                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                      />
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {stopModes.map((item) => (
+                        <button
+                          key={item.value}
+                          onClick={() => updateStop(index, { mode: item.value })}
+                          className={
+                            stop.mode === item.value
+                              ? "rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white"
+                              : "rounded-full bg-white px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-100"
+                          }
+                        >
+                          {item.shortLabel}
+                        </button>
+                      ))}
                     </div>
+
+                    <input
+                      value={stop.value}
+                      onChange={(event) => updateStop(index, { value: event.target.value })}
+                      placeholder={mode.placeholder}
+                      className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                    />
 
                     <p className="mt-2 text-xs font-bold leading-5 text-slate-500">
                       {mode.helper}
@@ -660,9 +762,9 @@ export default function TripPlannerPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-sm font-black text-slate-500">Paso 3</p>
-              <h2 className="text-2xl font-black">Resultado</h2>
+              <h2 className="text-2xl font-black">Resultado del viaje</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Ruta + mejores gasolineras cerca de cada parada.
+                Recomendaciones con precio, desvío y acceso a Google Maps.
               </p>
             </div>
 
@@ -715,7 +817,7 @@ export default function TripPlannerPage() {
                       </p>
                       <h3 className="text-xl font-black">{stop.label}</h3>
                       <p className="mt-1 text-sm text-slate-500">
-                        Buscando gasolineras a máximo {stop.radiusKm} km de ese punto de ruta.
+                        Gasolineras a máximo {stop.radiusKm} km de ese punto de la ruta.
                       </p>
                     </div>
                   </div>
