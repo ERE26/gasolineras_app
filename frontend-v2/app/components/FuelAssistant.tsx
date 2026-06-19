@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 type Station = {
   id: number;
   name: string;
@@ -20,6 +25,7 @@ type Station = {
 type SearchContext = {
   fuel?: string;
   brand?: string;
+  brands?: string[];
   area?: {
     label?: string;
     municipality?: string;
@@ -40,13 +46,22 @@ type SearchContext = {
   updatedAt?: string;
 };
 
+const exampleQuestions = [
+  "¿Me compensa ir a la más barata?",
+  "Compara las marcas que he filtrado",
+  "Explícame los resultados del buscador",
+  "¿Qué debería mirar antes de repostar?",
+];
+
 export default function FuelAssistant() {
   const [context, setContext] = useState<SearchContext | null>(null);
   const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("lastFuelSearchContext");
+
     if (!saved) return;
 
     try {
@@ -64,59 +79,60 @@ export default function FuelAssistant() {
   const contextLabel =
     context?.areaInfo?.municipality ||
     context?.area?.municipality ||
+    context?.areaInfo?.label ||
     context?.area?.label ||
     "sin búsqueda cercana";
 
-  function buildAnswer(kind?: string) {
-    if (!context || !bestStation) {
-      setAnswer(
-        "Todavía no tengo una búsqueda cercana para analizar. Ve a Buscar, permite ubicación o escribe una dirección cercana, y después vuelve aquí. Así el análisis se hará sobre tu zona real, no sobre gasolineras lejanas."
-      );
-      return;
+  async function askAssistant(customQuestion?: string) {
+    const finalQuestion = (customQuestion || question).trim();
+
+    if (!finalQuestion) return;
+
+    const userMessage: ChatMessage = {
+      role: "user",
+      content: finalQuestion,
+    };
+
+    const nextMessages = [...messages, userMessage];
+
+    setMessages(nextMessages);
+    setQuestion("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/fuel-assistant", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          question: finalQuestion,
+          context,
+          messages: nextMessages,
+        }),
+      });
+
+      const data = await response.json();
+
+      setMessages([
+        ...nextMessages,
+        {
+          role: "assistant",
+          content: data.answer || "No he podido generar una respuesta.",
+        },
+      ]);
+    } catch {
+      setMessages([
+        ...nextMessages,
+        {
+          role: "assistant",
+          content:
+            "No he podido conectar con el asistente. Prueba de nuevo o haz una búsqueda cercana primero.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
     }
-
-    const radius = context.areaInfo?.chosenRadiusKm;
-    const area = contextLabel;
-    const price = Number(bestStation.price);
-    const reference = context.referencePrice;
-
-    const distanceText = bestStation.distance_meters
-      ? `${(bestStation.distance_meters / 1000).toFixed(2)} km`
-      : "distancia no calculada";
-
-    let response = `Estoy usando tu última búsqueda en ${area}`;
-    if (radius) response += ` con radio de ${radius} km`;
-    response += `. La recomendación se limita a esa zona para evitar mandarte a otra ciudad sin sentido. `;
-
-    if (kind === "best" || !kind) {
-      response += `La opción más barata encontrada es ${bestStation.name}, en ${bestStation.municipality}, a ${price.toFixed(3)} €/L y a ${distanceText}. `;
-    }
-
-    if (kind === "compare" || question.toLowerCase().includes("compensa")) {
-      if (reference) {
-        const diff = reference - price;
-        response += `La referencia local está en torno a ${reference.toFixed(3)} €/L, por lo que la diferencia es de ${diff.toFixed(3)} €/L. `;
-        response += diff > 0
-          ? "Puede compensar si no te obliga a desviarte demasiado."
-          : "No parece una gran ventaja frente al precio medio local.";
-      } else {
-        response += "No hay referencia local suficiente, así que usaría precio, distancia y horario como criterios principales.";
-      }
-    }
-
-    if (kind === "radius") {
-      response += "El radio se ajusta así: en ciudad densa se empieza por 1 km; si aparecen pocas estaciones se amplía a 5 km. En afueras se usa 5 km directamente.";
-    }
-
-    if (kind === "brand" || question.toLowerCase().includes("marca")) {
-      const brands = Array.from(
-        new Set((context.stations || []).map((station) => station.brand).filter(Boolean))
-      ).slice(0, 6);
-
-      response += ` En tu búsqueda aparecen estas marcas: ${brands.join(", ") || "no hay suficientes marcas"}. No elegiría solo por marca: miraría precio, distancia y si está de camino.`;
-    }
-
-    setAnswer(response);
   }
 
   return (
@@ -124,10 +140,10 @@ export default function FuelAssistant() {
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-sm font-black text-blue-600">IA de repostaje</p>
-          <h2 className="mt-1 text-3xl font-black">Analiza tu última búsqueda cercana</h2>
+          <h2 className="mt-1 text-3xl font-black">Pregunta sobre tu búsqueda</h2>
           <p className="mt-3 max-w-3xl leading-7 text-slate-600">
-            El asistente usa ubicación, radio, precio de referencia y resultados cercanos.
-            No compara Madrid con Zaragoza ni Canarias con Península si no corresponde.
+            Puedes preguntarle sobre ahorro, marcas, distancia, favoritos, vehículos,
+            filtros o cómo interpretar la web. Usa tu última búsqueda cercana como contexto.
           </p>
         </div>
 
@@ -144,12 +160,12 @@ export default function FuelAssistant() {
           <p className="text-xs font-black uppercase text-slate-500">Zona</p>
           <p className="mt-1 font-black">{contextLabel}</p>
         </div>
+
         <div className="rounded-3xl bg-slate-50 p-4">
-          <p className="text-xs font-black uppercase text-slate-500">Radio</p>
-          <p className="mt-1 font-black">
-            {context?.areaInfo?.chosenRadiusKm ? `${context.areaInfo.chosenRadiusKm} km` : "-"}
-          </p>
+          <p className="text-xs font-black uppercase text-slate-500">Resultados</p>
+          <p className="mt-1 font-black">{context?.stations?.length || 0}</p>
         </div>
+
         <div className="rounded-3xl bg-slate-50 p-4">
           <p className="text-xs font-black uppercase text-slate-500">Mejor precio</p>
           <p className="mt-1 font-black">
@@ -158,56 +174,62 @@ export default function FuelAssistant() {
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 md:grid-cols-4">
-        <button
-          onClick={() => buildAnswer("best")}
-          className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-slate-800"
-        >
-          Mejor cercana
-        </button>
-        <button
-          onClick={() => buildAnswer("compare")}
-          className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-black text-white hover:bg-emerald-400"
-        >
-          ¿Compensa?
-        </button>
-        <button
-          onClick={() => buildAnswer("brand")}
-          className="rounded-2xl bg-purple-600 px-4 py-3 text-sm font-black text-white hover:bg-purple-500"
-        >
-          Comparar marcas
-        </button>
-        <button
-          onClick={() => buildAnswer("radius")}
-          className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-500"
-        >
-          Explicar radio
-        </button>
+      <div className="mt-5 flex flex-wrap gap-2">
+        {exampleQuestions.map((item) => (
+          <button
+            key={item}
+            onClick={() => askAssistant(item)}
+            className="rounded-full bg-blue-50 px-4 py-2 text-sm font-black text-blue-700 hover:bg-blue-100"
+          >
+            {item}
+          </button>
+        ))}
       </div>
 
-      <div className="mt-5">
-        <label className="mb-2 block text-sm font-black">
-          Pregunta al asistente
-        </label>
+      <div className="mt-5 max-h-[420px] space-y-3 overflow-auto rounded-3xl bg-slate-50 p-4">
+        {messages.length === 0 && (
+          <div className="rounded-3xl bg-white p-5 text-slate-600 shadow-sm">
+            Haz una pregunta libre. Por ejemplo: “Estoy en Madrid y he filtrado Repsol y BP,
+            ¿cuál elegirías?” o “¿me compensa desviarme 3 km?”.
+          </div>
+        )}
+
+        {messages.map((message, index) => (
+          <div
+            key={index}
+            className={
+              message.role === "user"
+                ? "ml-auto max-w-3xl rounded-3xl bg-slate-950 p-4 text-white"
+                : "mr-auto max-w-3xl rounded-3xl bg-white p-4 leading-7 text-slate-700 shadow-sm"
+            }
+          >
+            {message.content}
+          </div>
+        ))}
+
+        {loading && (
+          <div className="mr-auto max-w-3xl rounded-3xl bg-white p-4 text-slate-500 shadow-sm">
+            Analizando...
+          </div>
+        )}
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
         <textarea
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
-          placeholder="Ej: ¿me compensa ir a la más barata?, ¿qué marca sale mejor en mi zona?"
-          className="min-h-28 w-full rounded-3xl border border-slate-200 p-4 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+          placeholder="Pregunta lo que quieras sobre gasolineras, ahorro, filtros, ubicación o uso de la web..."
+          className="min-h-24 w-full rounded-3xl border border-slate-200 p-4 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
         />
+
         <button
-          onClick={() => buildAnswer()}
-          className="mt-3 rounded-2xl bg-slate-950 px-5 py-3 font-black text-white hover:bg-slate-800"
+          onClick={() => askAssistant()}
+          disabled={loading || !question.trim()}
+          className="rounded-3xl bg-slate-950 px-7 py-4 font-black text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Analizar
+          Enviar
         </button>
       </div>
-
-      {answer && (
-        <div className="mt-5 rounded-3xl bg-blue-50 p-5 leading-7 text-blue-950">
-          {answer}
-        </div>
-      )}
     </section>
   );
 }
