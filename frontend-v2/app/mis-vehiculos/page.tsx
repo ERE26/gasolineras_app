@@ -86,12 +86,12 @@ export default function VehiclesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f9fc] text-slate-950">
+    <main className="min-h-screen bg-[#f3f6fb] text-slate-950">
       <TopNav />
 
       <section className="mx-auto max-w-7xl px-6 py-7">
         <div className="mb-6">
-          <p className="text-sm font-black text-purple-600">Mis vehículos</p>
+          <p className="text-sm font-black text-amber-600">Mis vehículos</p>
           <h1 className="text-4xl font-black">Tus vehículos</h1>
           <p className="mt-2 max-w-3xl text-slate-600">
             Añade depósito y consumo para saber si merece la pena desviarte a una gasolinera más barata.
@@ -151,7 +151,7 @@ export default function VehiclesPage() {
           </section>
 
           <aside className="self-start rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-black text-purple-600">Añadir vehículo</p>
+            <p className="text-sm font-black text-amber-600">Añadir vehículo</p>
             <h2 className="mt-1 text-2xl font-black">Datos básicos</h2>
 
             <div className="mt-5 space-y-4">
@@ -175,7 +175,7 @@ export default function VehiclesPage() {
                       className={
                         fuel === option.value
                           ? "rounded-full bg-purple-600 px-3 py-2 text-xs font-black text-white"
-                          : "rounded-full bg-purple-50 px-3 py-2 text-xs font-black text-purple-700 hover:bg-purple-100"
+                          : "rounded-full bg-amber-50 px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100"
                       }
                     >
                       {option.label}
@@ -224,14 +224,14 @@ export default function VehiclesPage() {
                 </div>
               </div>
 
-              <div className="rounded-3xl bg-purple-50 p-4 text-sm text-purple-900">
+              <div className="rounded-3xl bg-amber-50 p-4 text-sm text-purple-900">
                 El depósito sirve para calcular cuánto pagas al llenar. El consumo sirve
                 para estimar si compensa desviarte.
               </div>
 
               <button
                 onClick={addVehicle}
-                className="w-full rounded-2xl bg-purple-600 px-5 py-4 text-lg font-black text-white shadow-lg hover:bg-purple-500"
+                className="w-full rounded-2xl bg-purple-600 px-5 py-4 text-lg font-black text-white shadow-lg hover:bg-amber-500"
               >
                 Guardar vehículo
               </button>

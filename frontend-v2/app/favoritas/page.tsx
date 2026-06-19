@@ -245,7 +245,7 @@ export default function FavoritesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f9fc] text-slate-950">
+    <main className="min-h-screen bg-[#f3f6fb] text-slate-950">
       <TopNav />
 
       <section className="mx-auto max-w-7xl px-6 py-8">
@@ -290,7 +290,7 @@ export default function FavoritesPage() {
                           <div className="flex flex-wrap gap-2">
                             <button
                               onClick={() => saveEditedName(station.id)}
-                              className="rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-black text-white hover:bg-emerald-400"
+                              className="rounded-2xl bg-amber-500 px-4 py-2 text-sm font-black text-white hover:bg-emerald-400"
                             >
                               Guardar nombre
                             </button>
@@ -312,7 +312,7 @@ export default function FavoritesPage() {
                           <p className="text-sm text-slate-500">{station.brand || "Marca no indicada"}</p>
                           {station.address && <p className="mt-1 text-sm text-slate-500">{station.address}</p>}
                           {station.price && (
-                            <p className="mt-2 text-sm font-black text-emerald-700">
+                            <p className="mt-2 text-sm font-black text-amber-700">
                               Último precio visto: {Number(station.price).toFixed(3)} €/L
                             </p>
                           )}
@@ -452,7 +452,7 @@ export default function FavoritesPage() {
                         </p>
                         <p className="mt-1 text-sm text-slate-500">{station.address}</p>
                         {station.price && (
-                          <p className="mt-2 text-sm font-black text-emerald-700">
+                          <p className="mt-2 text-sm font-black text-amber-700">
                             {Number(station.price).toFixed(3)} €/L
                           </p>
                         )}

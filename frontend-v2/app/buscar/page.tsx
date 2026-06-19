@@ -755,7 +755,7 @@ export default function SearchPage() {
   }, [stations, sortMode, favoriteOnly]);
 
   return (
-    <main className="min-h-screen bg-[#f7f9fc] text-slate-950">
+    <main className="min-h-screen bg-[#f3f6fb] text-slate-950">
       <TopNav />
 
       <section className="mx-auto max-w-7xl px-4 py-6">
@@ -763,7 +763,7 @@ export default function SearchPage() {
           <div className="rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-black text-blue-600">Buscar gasolineras</p>
+                <p className="text-sm font-black text-emerald-600">Buscar gasolineras</p>
                 <h1 className="text-2xl font-black">Compara precios cerca de ti</h1>
               </div>
 
@@ -808,21 +808,21 @@ export default function SearchPage() {
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
               <button
                 onClick={searchByAddress}
-                className="rounded-2xl bg-blue-600 px-4 py-3 font-black text-white shadow-sm hover:bg-blue-500"
+                className="rounded-2xl bg-emerald-500 px-4 py-3 font-black text-white shadow-sm shadow-emerald-100 hover:bg-emerald-400"
               >
                 Buscar dirección
               </button>
 
               <button
                 onClick={() => loadNearby(fuel)}
-                className="rounded-2xl bg-slate-950 px-4 py-3 font-black text-white shadow-sm hover:bg-slate-800"
+                className="rounded-2xl bg-[#07111f] px-4 py-3 font-black text-white shadow-sm hover:bg-slate-800"
               >
                 Mi ubicación
               </button>
 
               <button
                 onClick={loadManualRanking}
-                className="rounded-2xl bg-emerald-500 px-4 py-3 font-black text-white shadow-sm hover:bg-emerald-400"
+                className="rounded-2xl bg-blue-600 px-4 py-3 font-black text-white shadow-sm hover:bg-blue-500"
               >
                 Aplicar
               </button>

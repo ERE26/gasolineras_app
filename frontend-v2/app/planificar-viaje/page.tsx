@@ -467,14 +467,14 @@ export default function TripPlannerPage() {
   const firstRecommendedStation = result?.stops?.find((stop) => stop.best)?.best || null;
 
   return (
-    <main className="min-h-screen bg-[#f7f9fc] text-slate-950">
+    <main className="min-h-screen bg-[#f3f6fb] text-slate-950">
       <TopNav />
 
       <section className="mx-auto max-w-7xl px-4 py-6">
         <div className="mb-4 rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm font-black text-emerald-600">Planifica tu viaje</p>
+              <p className="text-sm font-black text-blue-600">Planifica tu viaje</p>
               <h1 className="text-3xl font-black">Planifica dónde repostar</h1>
               <p className="mt-2 max-w-3xl text-sm font-bold leading-6 text-slate-500">
                 Elige origen, destino y cuándo quieres parar. Buscamos estaciones cerca de la ruta.
@@ -482,7 +482,7 @@ export default function TripPlannerPage() {
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-center text-xs font-black">
-              <div className="rounded-2xl bg-emerald-50 px-3 py-2 text-emerald-700">Ruta</div>
+              <div className="rounded-2xl bg-emerald-50 px-3 py-2 text-blue-700">Ruta</div>
               <div className="rounded-2xl bg-blue-50 px-3 py-2 text-blue-700">≤ 5 km</div>
               <div className="rounded-2xl bg-purple-50 px-3 py-2 text-purple-700">Ahorro</div>
             </div>
@@ -501,7 +501,7 @@ export default function TripPlannerPage() {
                 <button
                   onClick={planTrip}
                   disabled={loading}
-                  className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? "Analizando..." : "Analizar"}
                 </button>
@@ -580,7 +580,7 @@ export default function TripPlannerPage() {
 
                   <button
                     onClick={addStop}
-                    className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 hover:bg-emerald-100"
+                    className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-black text-blue-700 hover:bg-blue-100"
                   >
                     Añadir
                   </button>
@@ -789,10 +789,10 @@ export default function TripPlannerPage() {
                 </div>
 
                 {firstRecommendedStation && (
-                  <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4">
-                    <p className="text-xs font-black uppercase text-emerald-700">Mejor recomendación</p>
+                  <div className="rounded-3xl border border-blue-200 bg-blue-50 p-4">
+                    <p className="text-xs font-black uppercase text-blue-700">Mejor recomendación</p>
                     <h3 className="mt-1 text-lg font-black">{firstRecommendedStation.name || "Gasolinera"}</h3>
-                    <p className="text-sm font-bold text-emerald-900">
+                    <p className="text-sm font-bold text-blue-900">
                       {Number(firstRecommendedStation.price).toFixed(3)} €/L · desvío{" "}
                       {formatDetour(firstRecommendedStation.detourMeters)}
                     </p>
@@ -803,7 +803,7 @@ export default function TripPlannerPage() {
                   {result.stops.map((stop, index) => (
                     <article key={stop.id} className="rounded-[1.4rem] border border-slate-200 p-4">
                       <div>
-                        <p className="text-sm font-black text-emerald-600">Parada {index + 1}</p>
+                        <p className="text-sm font-black text-blue-600">Parada {index + 1}</p>
                         <h3 className="text-lg font-black">{stop.label}</h3>
                         <p className="mt-1 text-xs font-bold text-slate-500">
                           Gasolineras a máximo {stop.radiusKm} km.
@@ -822,7 +822,7 @@ export default function TripPlannerPage() {
                             key={`${station.id || station.station_id || stationIndex}`}
                             className={
                               stationIndex === 0
-                                ? "rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-3"
+                                ? "rounded-2xl border-2 border-blue-300 bg-blue-50 p-3"
                                 : "rounded-2xl bg-slate-50 p-3"
                             }
                           >
