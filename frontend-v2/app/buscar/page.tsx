@@ -75,14 +75,29 @@ function isMainBrandStation(station: { brand?: string; name?: string }) {
   return mainBrands.some((brand) => text.includes(brand));
 }
 
-function filterByBrandSelection<T extends { brand?: string; name?: string }>(items: T[], brand: string) {
-  if (!brand.trim()) return items;
-  if (brand.toUpperCase() === "OTRA") {
-    return items.filter((item) => !isMainBrandStation(item));
+function stationMatchesOneBrand(station: { brand?: string; name?: string }, selectedBrand: string) {
+  if (selectedBrand === "OTRA") {
+    return !isMainBrandStation(station);
   }
 
-  const selected = brand.toUpperCase();
-  return items.filter((item) => `${item.brand || ""} ${item.name || ""}`.toUpperCase().includes(selected));
+  const text = `${station.brand || ""} ${station.name || ""}`.toUpperCase();
+  return text.includes(selectedBrand);
+}
+
+function filterByBrandSelections<T extends { brand?: string; name?: string }>(items: T[], selectedBrands: string[]) {
+  if (selectedBrands.length === 0) return items;
+
+  return items.filter((item) =>
+    selectedBrands.some((selectedBrand) => stationMatchesOneBrand(item, selectedBrand))
+  );
+}
+
+function getApiBrandFilter(selectedBrands: string[]) {
+  if (selectedBrands.length === 1 && selectedBrands[0] !== "OTRA") {
+    return selectedBrands[0];
+  }
+
+  return "";
 }
 
 type FavoriteStation = Station | {
@@ -152,7 +167,11 @@ export default function SearchPage() {
   const [fuel, setFuel] = useState("gasolina95");
   const [province, setProvince] = useState("");
   const [municipality, setMunicipality] = useState("");
-  const [brand, setBrand] = useState("");
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [brandMenuOpen, setBrandMenuOpen] = useState(false);
+  const [favoriteMenuOpen, setFavoriteMenuOpen] = useState(false);
+  const [selectedFavoriteId, setSelectedFavoriteId] = useState<string | null>(null);
+  const [favoriteOnly, setFavoriteOnly] = useState(false);
 
   const [searchAddress, setSearchAddress] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
@@ -160,7 +179,6 @@ export default function SearchPage() {
 
   const [provinces, setProvinces] = useState<string[]>([]);
   const [municipalities, setMunicipalities] = useState<string[]>([]);
-  const [brandSuggestions, setBrandSuggestions] = useState<string[]>(brandOptions);
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
@@ -223,8 +241,20 @@ export default function SearchPage() {
     }
   }
 
-  async function loadBrands(search: string) {
-    setBrandSuggestions(brandOptions);
+  function toggleBrandSelection(selectedBrand: string) {
+    setSelectedBrands((currentBrands) => {
+      const exists = currentBrands.includes(selectedBrand);
+
+      if (exists) {
+        return currentBrands.filter((brand) => brand !== selectedBrand);
+      }
+
+      return [...currentBrands, selectedBrand];
+    });
+  }
+
+  function clearBrandSelection() {
+    setSelectedBrands([]);
   }
 
   async function loadAddressSuggestions(query: string) {
@@ -322,24 +352,68 @@ export default function SearchPage() {
     saveFavorites([...favoriteStationsFull, { ...station }]);
   }
 
-  async function searchFavorite(favorite: FavoriteStation) {
-    if ("latitude" in favorite && favorite.latitude && favorite.longitude) {
-      await runSmartNearby(
-        favorite.latitude,
-        favorite.longitude,
-        favorite.name,
-        fuel,
-        {
-          label: favorite.name,
-          municipality: favorite.municipality || favorite.name,
-          isMajorCity: false,
-        }
-      );
+  function normalizeFavoriteToStation(favorite: FavoriteStation): Station | null {
+    if (!favorite.price || !favorite.latitude || !favorite.longitude) {
+      return null;
+    }
+
+    return {
+      id: typeof favorite.id === "number" ? favorite.id : Date.now(),
+      name: favorite.name,
+      brand: favorite.brand || "Favorita",
+      address: favorite.address || "Dirección no indicada",
+      province: favorite.province || "",
+      municipality: favorite.municipality || "",
+      latitude: favorite.latitude,
+      longitude: favorite.longitude,
+      price: favorite.price,
+      fuel_type: favorite.fuel_type || fuel,
+      captured_at: (favorite as Partial<Station>).captured_at,
+      distance_meters: (favorite as Partial<Station>).distance_meters,
+      schedule: (favorite as Partial<Station>).schedule,
+    };
+  }
+
+  function selectFavoriteStation(favorite: FavoriteStation) {
+    const station = normalizeFavoriteToStation(favorite);
+
+    if (!station) {
+      alert("Esta favorita no tiene precio guardado todavía. Búscala de nuevo desde Favoritas o desde el buscador para guardar sus datos completos.");
       return;
     }
 
-    if (favorite.brand) setBrand(favorite.brand);
-    if (favorite.address) setSearchAddress(favorite.address);
+    setSelectedFavoriteId(String(favorite.id));
+    setFavoriteOnly(true);
+    setStations([station]);
+    setReferencePrice(null);
+    setAreaInfo({
+      label: favorite.name,
+      municipality: station.municipality || favorite.name,
+      isMajorCity: false,
+      chosenRadiusKm: 0,
+      reason: "mostrando solo esta gasolinera favorita, sin compararla con otras",
+    });
+
+    localStorage.setItem(
+      "lastFuelSearchContext",
+      JSON.stringify({
+        fuel: station.fuel_type,
+        brands: selectedBrands,
+        brand: selectedBrands.join(", "),
+        area: { label: favorite.name, municipality: station.municipality },
+        areaInfo: {
+          label: favorite.name,
+          municipality: station.municipality,
+          chosenRadiusKm: 0,
+          reason: "favorita seleccionada directamente",
+        },
+        userLocation,
+        referencePrice: null,
+        stations: [station],
+        favoriteOnly: true,
+        updatedAt: new Date().toISOString(),
+      })
+    );
   }
 
   function selectVehicle(vehicleId: string) {
@@ -356,18 +430,19 @@ export default function SearchPage() {
       lon: String(lon),
       fuel: selectedFuel,
       radius: String(radiusKm * 1000),
-      limit: brand.toUpperCase() === "OTRA" ? "80" : "25",
+      limit: selectedBrands.length > 0 ? "120" : "25",
     });
 
-    if (brand.trim() && brand.toUpperCase() !== "OTRA") {
-      params.append("brand", brand.trim());
+    const apiBrand = getApiBrandFilter(selectedBrands);
+    if (apiBrand) {
+      params.append("brand", apiBrand);
     }
 
     const response = await fetch(`${API_URL}/api/nearby?${params.toString()}`);
     const data = await response.json();
 
     const result = Array.isArray(data) ? data : [];
-    return filterByBrandSelection(result, brand).slice(0, 25);
+    return filterByBrandSelections(result, selectedBrands).slice(0, 25);
   }
 
   async function loadReferenceForMunicipality(areaName: string, selectedFuel = fuel) {
@@ -377,15 +452,21 @@ export default function SearchPage() {
       const params = new URLSearchParams({
         fuel: selectedFuel,
         municipality: areaName,
-        limit: "80",
+        limit: selectedBrands.length > 0 ? "150" : "80",
       });
+
+      const apiBrand = getApiBrandFilter(selectedBrands);
+      if (apiBrand) {
+        params.append("brand", apiBrand);
+      }
 
       const response = await fetch(`${API_URL}/api/ranking?${params.toString()}`);
       const data = await response.json();
 
-      const prices = Array.isArray(data)
-        ? data.map((item: Station) => Number(item.price)).filter(Number.isFinite)
-        : [];
+      const filteredStations = filterByBrandSelections(Array.isArray(data) ? data : [], selectedBrands);
+      const prices = filteredStations
+        .map((item: Station) => Number(item.price))
+        .filter(Number.isFinite);
 
       if (prices.length === 0) return null;
 
@@ -430,6 +511,8 @@ export default function SearchPage() {
 
       const reference = await loadReferenceForMunicipality(area.municipality, selectedFuel);
 
+      setFavoriteOnly(false);
+      setSelectedFavoriteId(null);
       setStations(nearby);
       setUserLocation({ lat, lon });
       setReferencePrice(reference);
@@ -445,7 +528,8 @@ export default function SearchPage() {
         "lastFuelSearchContext",
         JSON.stringify({
           fuel: selectedFuel,
-          brand,
+          brands: selectedBrands,
+          brand: selectedBrands.join(", "),
           area,
           areaInfo: {
             label: sourceLabel || area.label,
@@ -522,7 +606,7 @@ export default function SearchPage() {
   }
 
   async function loadManualRanking() {
-    if (!province.trim() && !municipality.trim() && !brand.trim()) {
+    if (!province.trim() && !municipality.trim() && selectedBrands.length === 0) {
       await loadNearby(fuel);
       return;
     }
@@ -530,16 +614,23 @@ export default function SearchPage() {
     setLoading(true);
 
     try {
-      const params = new URLSearchParams({ fuel, limit: "25" });
+      const params = new URLSearchParams({
+        fuel,
+        limit: selectedBrands.length > 0 ? "120" : "25",
+      });
 
       if (province.trim()) params.append("province", province.trim());
       if (municipality.trim()) params.append("municipality", municipality.trim());
-      if (brand.trim() && brand.toUpperCase() !== "OTRA") params.append("brand", brand.trim());
+
+      const apiBrand = getApiBrandFilter(selectedBrands);
+      if (apiBrand) params.append("brand", apiBrand);
 
       const response = await fetch(`${API_URL}/api/ranking?${params.toString()}`);
       const data = await response.json();
-      const nextStations = filterByBrandSelection(Array.isArray(data) ? data : [], brand).slice(0, 25);
+      const nextStations = filterByBrandSelections(Array.isArray(data) ? data : [], selectedBrands).slice(0, 25);
 
+      setFavoriteOnly(false);
+      setSelectedFavoriteId(null);
       setStations(nextStations);
       setAreaInfo(null);
 
@@ -554,8 +645,9 @@ export default function SearchPage() {
         "lastFuelSearchContext",
         JSON.stringify({
           fuel,
-          brand,
-          area: { label: municipality || province || brand || "ranking manual" },
+          brands: selectedBrands,
+          brand: selectedBrands.join(", "),
+          area: { label: municipality || province || selectedBrands.join(", ") || "ranking manual" },
           areaInfo: null,
           userLocation,
           referencePrice: avg,
@@ -583,13 +675,6 @@ export default function SearchPage() {
     setMunicipality("");
   }, [province]);
 
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      loadBrands(brand);
-    }, 250);
-
-    return () => clearTimeout(timeout);
-  }, [brand]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -769,33 +854,95 @@ export default function SearchPage() {
                 )}
 
                 {favoriteStationsFull.length > 0 && (
-                  <div>
+                  <div className="relative">
                     <p className="mb-2 text-sm font-black text-slate-800">
                       Favoritas
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {favoriteStationsFull.slice(0, 8).map((favorite) => (
-                        <button
-                          key={favorite.id}
-                          onClick={() => searchFavorite(favorite)}
-                          className="rounded-full bg-yellow-50 px-3 py-2 text-xs font-black text-yellow-800 hover:bg-yellow-100"
-                        >
-                          {favorite.name}
-                        </button>
-                      ))}
-                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setFavoriteMenuOpen((open) => !open)}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-black text-slate-800 shadow-sm hover:bg-slate-50"
+                    >
+                      {selectedFavoriteId
+                        ? favoriteStationsFull.find((favorite) => String(favorite.id) === selectedFavoriteId)?.name || "Favorita seleccionada"
+                        : "Selecciona una gasolinera favorita"}
+                    </button>
+
+                    {favoriteMenuOpen && (
+                      <div className="absolute left-0 right-0 top-[76px] z-[2600] max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                        {favoriteStationsFull.map((favorite) => (
+                          <button
+                            key={favorite.id}
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              selectFavoriteStation(favorite);
+                              setFavoriteMenuOpen(false);
+                            }}
+                            className="block w-full px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-yellow-50"
+                          >
+                            <span className="font-black">{favorite.name}</span>
+                            {favorite.brand && <span className="ml-2 text-slate-500">· {favorite.brand}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                <AutocompleteInput
-                  label="Marca"
-                  value={brand}
-                  onChange={setBrand}
-                  onSelect={setBrand}
-                  placeholder="Repsol, Moeve, Galp, BP, Disa..."
-                  suggestions={brandOptions}
-                  showSuggestionsOnFocus
-                />
+                <div className="relative">
+                  <p className="mb-2 text-sm font-black text-slate-800">
+                    Marcas
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => setBrandMenuOpen((open) => !open)}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-black text-slate-800 shadow-sm hover:bg-slate-50"
+                  >
+                    {selectedBrands.length > 0
+                      ? selectedBrands.join(", ")
+                      : "Todas las marcas"}
+                  </button>
+
+                  {brandMenuOpen && (
+                    <div className="absolute left-0 right-0 top-[76px] z-[2600] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                      {brandOptions.map((brandOption) => {
+                        const selected = selectedBrands.includes(brandOption);
+
+                        return (
+                          <button
+                            key={brandOption}
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => toggleBrandSelection(brandOption)}
+                            className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-blue-50"
+                          >
+                            <span>{brandOption}</span>
+                            <span className={selected ? "text-blue-600" : "text-slate-300"}>
+                              {selected ? "✓" : "○"}
+                            </span>
+                          </button>
+                        );
+                      })}
+
+                      {selectedBrands.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={clearBrandSelection}
+                          className="block w-full border-t border-slate-100 px-4 py-3 text-left text-sm font-black text-red-600 hover:bg-red-50"
+                        >
+                          Quitar filtros de marca
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    Puedes elegir varias marcas. “OTRA” agrupa todas las demás.
+                  </p>
+                </div>
 
                 <AutocompleteInput
                   label="Provincia"
@@ -851,7 +998,7 @@ export default function SearchPage() {
                     key={station.id}
                     station={station}
                     index={index}
-                    averagePrice={visibleAveragePrice}
+                    averagePrice={favoriteOnly ? null : visibleAveragePrice}
                     selectedVehicle={selectedVehicle}
                     isFavorite={favoriteStationIds.some((id) => String(id) === String(station.id))}
                     onToggleFavorite={toggleFavoriteStation}
