@@ -152,12 +152,11 @@ export default function Home() {
             </div>
 
             <h1 className="text-5xl font-black leading-tight tracking-tight md:text-6xl">
-              Encuentra dónde repostar cerca sin pagar de más.
+              Ahorra al repostar cerca de ti o en tu ruta.
             </h1>
 
             <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-              Compara estaciones cercanas, guarda tus vehículos y calcula si el ahorro
-              compensa el desplazamiento. La app prioriza tu zona para evitar recomendaciones lejanas.
+              Compara precios oficiales, encuentra gasolineras cercanas y planifica paradas de repostaje sin desviarte de más.
             </p>
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -169,10 +168,10 @@ export default function Home() {
               </Link>
 
               <Link
-                href="/mis-vehiculos"
+                href="/planificar-viaje"
                 className="inline-flex items-center justify-center rounded-[1.55rem] border border-slate-200 bg-white px-7 py-5 text-lg font-black text-slate-950 shadow-sm hover:bg-slate-50"
               >
-                Añadir mi vehículo
+                Planificar viaje
               </Link>
             </div>
 
@@ -195,7 +194,7 @@ export default function Home() {
 
           <div className="self-start rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl">
             <p className="text-sm font-black text-blue-600">Cómo usarla</p>
-            <h2 className="mt-1 text-2xl font-black">Tu decisión de repostaje en 3 pasos</h2>
+            <h2 className="mt-1 text-2xl font-black">Todo lo importante en 3 acciones</h2>
 
             <div className="mt-5 grid gap-3">
               <Link
@@ -205,9 +204,9 @@ export default function Home() {
                 <div className="flex items-start gap-3">
                   <span className="text-3xl">📍</span>
                   <div>
-                    <h3 className="text-lg font-black">1. Busca por ubicación</h3>
+                    <h3 className="text-lg font-black">1. Busca cerca de ti</h3>
                     <p className="mt-1 text-sm leading-6 text-slate-600">
-                      Escribe una calle o usa tu ubicación. Las sugerencias se priorizan cerca de ti.
+                      Usa tu ubicación o escribe una dirección para ver precios reales.
                     </p>
                   </div>
                 </div>
@@ -220,24 +219,24 @@ export default function Home() {
                 <div className="flex items-start gap-3">
                   <span className="text-3xl">🚗</span>
                   <div>
-                    <h3 className="text-lg font-black">2. Guarda tu vehículo</h3>
+                    <h3 className="text-lg font-black">2. Calcula si compensa</h3>
                     <p className="mt-1 text-sm leading-6 text-slate-600">
-                      Depósito y consumo sirven para calcular el ahorro real del trayecto.
+                      Añade depósito y consumo para estimar el ahorro frente al desvío.
                     </p>
                   </div>
                 </div>
               </Link>
 
               <Link
-                href="/analisis"
+                href="/planificar-viaje"
                 className="rounded-3xl bg-gradient-to-br from-blue-50 to-blue-100 p-4 transition hover:-translate-y-0.5 hover:shadow-lg"
               >
                 <div className="flex items-start gap-3">
-                  <span className="text-3xl">🧠</span>
+                  <span className="text-3xl">🗺️</span>
                   <div>
-                    <h3 className="text-lg font-black">3. Analiza si compensa</h3>
+                    <h3 className="text-lg font-black">3. Planifica repostajes</h3>
                     <p className="mt-1 text-sm leading-6 text-slate-600">
-                      El asistente interpreta tu última búsqueda cercana.
+                      Elige origen, destino y cuándo quieres parar. Te proponemos estaciones cerca de la ruta.
                     </p>
                   </div>
                 </div>

@@ -475,16 +475,16 @@ export default function TripPlannerPage() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-black text-emerald-600">Planifica tu viaje</p>
-              <h1 className="text-3xl font-black">Repostaje inteligente en ruta</h1>
+              <h1 className="text-3xl font-black">Planifica dónde repostar</h1>
               <p className="mt-2 max-w-3xl text-sm font-bold leading-6 text-slate-500">
-                Origen, destino, paradas y resultado en una misma pantalla. Desvío máximo aproximado: 5 km.
+                Elige origen, destino y cuándo quieres parar. Buscamos estaciones cerca de la ruta.
               </p>
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-center text-xs font-black">
-              <div className="rounded-2xl bg-emerald-50 px-3 py-2 text-emerald-700">Ruta Google</div>
+              <div className="rounded-2xl bg-emerald-50 px-3 py-2 text-emerald-700">Ruta</div>
               <div className="rounded-2xl bg-blue-50 px-3 py-2 text-blue-700">≤ 5 km</div>
-              <div className="rounded-2xl bg-purple-50 px-3 py-2 text-purple-700">Precio/desvío</div>
+              <div className="rounded-2xl bg-purple-50 px-3 py-2 text-purple-700">Ahorro</div>
             </div>
           </div>
         </div>
@@ -567,7 +567,7 @@ export default function TripPlannerPage() {
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-black text-slate-500">Paso 2</p>
-                  <h2 className="text-2xl font-black">Paradas</h2>
+                  <h2 className="text-2xl font-black">Cuándo parar</h2>
                 </div>
 
                 <div className="flex gap-2">
@@ -610,7 +610,7 @@ export default function TripPlannerPage() {
                         <div className="grid gap-3 md:grid-cols-[.9fr_1.1fr]">
                           <div>
                             <label className="mb-2 block text-xs font-black uppercase text-slate-500">
-                              Tipo de parada
+                              Quiero parar
                             </label>
                             <select
                               value={stop.mode}
@@ -745,9 +745,9 @@ export default function TripPlannerPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-sm font-black text-slate-500">Resultado</p>
-                <h2 className="text-2xl font-black">Gasolineras recomendadas</h2>
+                <h2 className="text-2xl font-black">Mejor parada para repostar</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Aparece aquí al analizar, sin bajar al final.
+                  Verás precio, desvío y acceso directo a Google Maps.
                 </p>
               </div>
 
@@ -765,7 +765,7 @@ export default function TripPlannerPage() {
 
             {!result && (
               <div className="mt-5 rounded-3xl bg-slate-50 p-7 text-center text-slate-500">
-                Completa origen, destino y paradas. Después pulsa “Analizar”.
+                Completa la ruta y pulsa “Analizar”. Aquí aparecerá la mejor opción.
               </div>
             )}
 

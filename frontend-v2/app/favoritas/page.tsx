@@ -250,11 +250,10 @@ export default function FavoritesPage() {
 
       <section className="mx-auto max-w-7xl px-6 py-8">
         <div className="mb-6 text-center">
-          <p className="text-sm font-black text-yellow-600">Favoritos inteligentes</p>
-          <h1 className="text-4xl font-black">Mis gasolineras favoritas</h1>
+          <p className="text-sm font-black text-yellow-600">Gasolineras guardadas</p>
+          <h1 className="text-4xl font-black">Tus favoritas</h1>
           <p className="mx-auto mt-3 max-w-3xl text-slate-600">
-            Guarda estaciones habituales y búscalas desde aquí. Puedes buscarlas por
-            dirección o marca, igual que en el buscador principal.
+            Guarda tus estaciones habituales para comparar precios y abrir la ruta en segundos.
           </p>
         </div>
 
@@ -262,7 +261,7 @@ export default function FavoritesPage() {
           <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-black">Favoritas guardadas</h2>
+                <h2 className="text-2xl font-black">Estaciones guardadas</h2>
                 <p className="text-sm text-slate-500">Se guardan en tu navegador.</p>
               </div>
 

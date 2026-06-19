@@ -92,9 +92,9 @@ export default function VehiclesPage() {
       <section className="mx-auto max-w-7xl px-6 py-7">
         <div className="mb-6">
           <p className="text-sm font-black text-purple-600">Mis vehículos</p>
-          <h1 className="text-4xl font-black">Vehículos y consumo</h1>
+          <h1 className="text-4xl font-black">Tus vehículos</h1>
           <p className="mt-2 max-w-3xl text-slate-600">
-            Guarda depósito y consumo para calcular el coste real de repostar y desplazarte.
+            Añade depósito y consumo para saber si merece la pena desviarte a una gasolinera más barata.
           </p>
         </div>
 
@@ -102,9 +102,9 @@ export default function VehiclesPage() {
           <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-2xl font-black">Vehículos guardados</h2>
+                <h2 className="text-2xl font-black">Coches guardados</h2>
                 <p className="text-sm text-slate-500">
-                  Se guardan en tu navegador y aparecen en el buscador.
+                  Se usan en Buscar y Planifica tu viaje para estimar ahorro real.
                 </p>
               </div>
 

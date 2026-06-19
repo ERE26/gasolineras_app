@@ -50,3 +50,32 @@ input {
 .leaflet-control-attribution {
   font-size: 10px;
 }
+
+
+::selection {
+  background: #bbf7d0;
+  color: #0f172a;
+}
+
+@media (max-width: 1023px) {
+  body {
+    padding-bottom: 78px;
+  }
+}
+
+.app-card {
+  border: 1px solid #e2e8f0;
+  background: white;
+  border-radius: 1.75rem;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.04);
+}
+
+.app-button-primary {
+  background: #0f172a;
+  color: white;
+}
+
+.app-button-green {
+  background: #10b981;
+  color: white;
+}

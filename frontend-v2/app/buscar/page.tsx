@@ -763,8 +763,8 @@ export default function SearchPage() {
           <div className="rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-black text-blue-600">Centro de búsqueda</p>
-                <h1 className="text-2xl font-black">Busca, filtra y compara</h1>
+                <p className="text-sm font-black text-blue-600">Buscar gasolineras</p>
+                <h1 className="text-2xl font-black">Compara precios cerca de ti</h1>
               </div>
 
               {loading && (
@@ -810,21 +810,21 @@ export default function SearchPage() {
                 onClick={searchByAddress}
                 className="rounded-2xl bg-blue-600 px-4 py-3 font-black text-white shadow-sm hover:bg-blue-500"
               >
-                Buscar esta zona
+                Buscar dirección
               </button>
 
               <button
                 onClick={() => loadNearby(fuel)}
                 className="rounded-2xl bg-slate-950 px-4 py-3 font-black text-white shadow-sm hover:bg-slate-800"
               >
-                Usar mi ubicación
+                Mi ubicación
               </button>
 
               <button
                 onClick={loadManualRanking}
                 className="rounded-2xl bg-emerald-500 px-4 py-3 font-black text-white shadow-sm hover:bg-emerald-400"
               >
-                Aplicar filtros
+                Aplicar
               </button>
             </div>
           </div>
@@ -1080,7 +1080,7 @@ export default function SearchPage() {
             <div className="rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h2 className="text-xl font-black">Gasolineras encontradas</h2>
+                  <h2 className="text-xl font-black">Resultados cerca de ti</h2>
                   <p className="text-sm text-slate-500">
                     {favoriteOnly
                       ? "Mostrando solo tu gasolinera favorita, sin compararla con otras."
