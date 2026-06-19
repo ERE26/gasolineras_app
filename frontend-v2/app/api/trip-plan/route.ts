@@ -8,6 +8,7 @@ type LatLng = {
 type TripStopInput = {
   label?: string;
   value?: string;
+  mode?: "percent" | "near-place" | "km-before-destination" | "hours-from-start" | "km-from-start";
 };
 
 type Station = {
@@ -87,34 +88,47 @@ function decodePolyline(encoded: string): LatLng[] {
   return coordinates;
 }
 
-function routePointAtPercent(points: LatLng[], percent: number) {
+function routeTotalDistance(points: LatLng[]) {
+  let total = 0;
+
+  for (let i = 1; i < points.length; i++) {
+    total += haversineMeters(points[i - 1], points[i]);
+  }
+
+  return total;
+}
+
+function routePointAtMeters(points: LatLng[], metersFromStart: number) {
   if (points.length === 0) return null;
   if (points.length === 1) return points[0];
 
-  const clamped = Math.max(0, Math.min(1, percent));
-  const totalDistances: number[] = [0];
+  const total = routeTotalDistance(points);
+  const target = Math.max(0, Math.min(total, metersFromStart));
+
+  let travelled = 0;
 
   for (let i = 1; i < points.length; i++) {
-    totalDistances[i] = totalDistances[i - 1] + haversineMeters(points[i - 1], points[i]);
-  }
+    const segment = haversineMeters(points[i - 1], points[i]);
 
-  const total = totalDistances[totalDistances.length - 1];
-  const target = total * clamped;
-
-  for (let i = 1; i < totalDistances.length; i++) {
-    if (totalDistances[i] >= target) {
-      const previous = totalDistances[i - 1];
-      const segment = totalDistances[i] - previous;
-      const ratio = segment === 0 ? 0 : (target - previous) / segment;
+    if (travelled + segment >= target) {
+      const ratio = segment === 0 ? 0 : (target - travelled) / segment;
 
       return {
         lat: points[i - 1].lat + (points[i].lat - points[i - 1].lat) * ratio,
         lon: points[i - 1].lon + (points[i].lon - points[i - 1].lon) * ratio,
       };
     }
+
+    travelled += segment;
   }
 
   return points[points.length - 1];
+}
+
+function routePointAtPercent(points: LatLng[], percent: number) {
+  const total = routeTotalDistance(points);
+
+  return routePointAtMeters(points, total * Math.max(0, Math.min(1, percent)));
 }
 
 function closestRoutePoint(points: LatLng[], target: LatLng) {
@@ -135,6 +149,12 @@ function closestRoutePoint(points: LatLng[], target: LatLng) {
   return { point: best, distanceMeters: bestDistance };
 }
 
+function normalizeNumber(value: string | number | undefined) {
+  const parsed = Number(String(value || "").replace(",", "."));
+
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function parseStopPercent(value: string | undefined, fallbackPercent: number) {
   const normalized = String(value || "").trim().toLowerCase();
 
@@ -153,17 +173,7 @@ function parseStopPercent(value: string | undefined, fallbackPercent: number) {
     }
   }
 
-  const numberMatch = normalized.match(/^0[,.]\d+$/);
-
-  if (numberMatch) {
-    const valueAsNumber = Number(normalized.replace(",", "."));
-
-    if (Number.isFinite(valueAsNumber)) {
-      return Math.max(0.05, Math.min(0.95, valueAsNumber));
-    }
-  }
-
-  return null;
+  return fallbackPercent;
 }
 
 async function geocodeAddress(address: string): Promise<{ location: LatLng; formattedAddress: string }> {
@@ -238,6 +248,7 @@ async function computeRoute(origin: LatLng, destination: LatLng) {
   return {
     distanceMeters: route.distanceMeters || 0,
     duration: route.duration || "",
+    durationSeconds: Number(String(route.duration || "").replace("s", "")) || 0,
     encodedPolyline: route.polyline?.encodedPolyline || "",
     points: decodePolyline(route.polyline?.encodedPolyline || ""),
   };
@@ -344,6 +355,68 @@ function humanDuration(duration: string) {
   return `${hours} h ${minutes} min`;
 }
 
+async function resolveStopPoint(stop: TripStopInput, index: number, route: any) {
+  const fallbackPercent = (index + 1) / Math.max(2, (route.stopCount || 1) + 1);
+  const value = String(stop.value || "").trim();
+  const totalMeters = route.distanceMeters || routeTotalDistance(route.points);
+  const totalSeconds = route.durationSeconds || 0;
+
+  if (stop.mode === "km-before-destination") {
+    const km = normalizeNumber(value);
+    const metersBeforeDestination = Math.max(0, Number(km || 0) * 1000);
+    const targetMeters = Math.max(0, totalMeters - metersBeforeDestination);
+
+    return {
+      point: routePointAtMeters(route.points, targetMeters),
+      label: km ? `${km} km antes del destino` : "Antes del destino",
+      method: "km-before-destination",
+    };
+  }
+
+  if (stop.mode === "hours-from-start") {
+    const hours = normalizeNumber(value);
+    const seconds = Math.max(0, Number(hours || 0) * 3600);
+    const percent = totalSeconds > 0 ? Math.min(0.95, seconds / totalSeconds) : fallbackPercent;
+
+    return {
+      point: routePointAtPercent(route.points, percent),
+      label: hours ? `tras ${hours} h de viaje` : "por tiempo de viaje",
+      method: "hours-from-start",
+    };
+  }
+
+  if (stop.mode === "km-from-start") {
+    const km = normalizeNumber(value);
+    const metersFromStart = Math.max(0, Number(km || 0) * 1000);
+
+    return {
+      point: routePointAtMeters(route.points, metersFromStart),
+      label: km ? `a los ${km} km de viaje` : "por distancia desde origen",
+      method: "km-from-start",
+    };
+  }
+
+  if (stop.mode === "near-place" && value) {
+    const geocodedStop = await geocodeAddress(value);
+    const closest = closestRoutePoint(route.points, geocodedStop.location);
+
+    return {
+      point: closest.point,
+      label: geocodedStop.formattedAddress,
+      method: "near-place",
+      distanceFromTypedPlaceMeters: closest.distanceMeters,
+    };
+  }
+
+  const percent = parseStopPercent(value, fallbackPercent);
+
+  return {
+    point: routePointAtPercent(route.points, percent),
+    label: value || `Parada ${(percent * 100).toFixed(0)}% de la ruta`,
+    method: "percent",
+  };
+}
+
 export async function POST(request: Request) {
   try {
     if (!GOOGLE_MAPS_API_KEY) {
@@ -399,31 +472,19 @@ export async function POST(request: Request) {
     const normalizedStops =
       stopInputs.length > 0
         ? stopInputs.slice(0, 4)
-        : [{ label: "Parada 1", value: "mitad" }];
+        : [{ label: "Parada 1", value: "mitad", mode: "percent" as const }];
+
+    const routeWithStopCount = {
+      ...route,
+      stopCount: normalizedStops.length,
+    };
 
     const analyzedStops = [];
 
     for (let index = 0; index < normalizedStops.length; index++) {
       const stop = normalizedStops[index];
-      const fallbackPercent = (index + 1) / (normalizedStops.length + 1);
-      const parsedPercent = parseStopPercent(stop.value, fallbackPercent);
-
-      let stopPoint: LatLng | null = null;
-      let stopLabel = stop.value?.trim() || `Parada ${index + 1}`;
-      let routeDistanceFromTypedPlace = 0;
-
-      if (parsedPercent !== null) {
-        stopPoint = routePointAtPercent(route.points, parsedPercent);
-        stopLabel =
-          stop.value?.trim() ||
-          `Parada ${(parsedPercent * 100).toFixed(0)}% de la ruta`;
-      } else if (stop.value?.trim()) {
-        const geocodedStop = await geocodeAddress(stop.value.trim());
-        const closest = closestRoutePoint(route.points, geocodedStop.location);
-        stopPoint = closest.point;
-        routeDistanceFromTypedPlace = closest.distanceMeters;
-        stopLabel = geocodedStop.formattedAddress;
-      }
+      const resolvedStop = await resolveStopPoint(stop, index, routeWithStopCount);
+      const stopPoint = resolvedStop.point;
 
       if (!stopPoint) continue;
 
@@ -432,7 +493,7 @@ export async function POST(request: Request) {
       const candidates = rawStations
         .map((station) => {
           const location = stationLatLon(station);
-          const detourMeters = location ? haversineMeters(stopPoint!, location) : station.distance_meters;
+          const detourMeters = location ? haversineMeters(stopPoint, location) : station.distance_meters;
 
           return {
             ...station,
@@ -452,11 +513,12 @@ export async function POST(request: Request) {
 
       analyzedStops.push({
         id: `stop-${index + 1}`,
-        label: stopLabel,
+        label: resolvedStop.label,
         input: stop.value || "",
+        mode: resolvedStop.method,
         point: stopPoint,
         radiusKm,
-        distanceFromTypedPlaceMeters: routeDistanceFromTypedPlace,
+        distanceFromTypedPlaceMeters: resolvedStop.distanceFromTypedPlaceMeters || 0,
         stations: sorted,
         best,
       });
@@ -478,6 +540,7 @@ export async function POST(request: Request) {
       route: {
         distanceMeters: route.distanceMeters,
         duration: humanDuration(route.duration),
+        durationSeconds: route.durationSeconds,
       },
       fuel,
       sortBy,

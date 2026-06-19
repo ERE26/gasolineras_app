@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import TopNav from "../components/TopNav";
 
 type Vehicle = {
@@ -27,6 +27,13 @@ type Station = {
   detourMeters?: number;
 };
 
+type StopMode = "percent" | "near-place" | "km-before-destination" | "hours-from-start" | "km-from-start";
+
+type StopForm = {
+  mode: StopMode;
+  value: string;
+};
+
 type TripResult = {
   origin: {
     label: string;
@@ -39,6 +46,7 @@ type TripResult = {
   route: {
     distanceMeters: number;
     duration: string;
+    durationSeconds?: number;
   };
   fuel: string;
   sortBy: string;
@@ -48,6 +56,7 @@ type TripResult = {
     id: string;
     label: string;
     input: string;
+    mode?: string;
     point: { lat: number; lon: number };
     radiusKm: number;
     stations: Station[];
@@ -63,12 +72,77 @@ const fuelOptions = [
   { value: "glp", label: "GLP" },
 ];
 
-const stopPresets = [
-  "mitad",
-  "primer tercio",
-  "segundo tercio",
-  "25%",
-  "75%",
+const destinationSuggestions = [
+  "Madrid",
+  "Barcelona",
+  "Valencia",
+  "Sevilla",
+  "Málaga",
+  "Zaragoza",
+  "Bilbao",
+  "Alicante",
+  "San Sebastián",
+  "Santander",
+  "Granada",
+  "Cádiz",
+  "A Coruña",
+  "Vigo",
+  "Murcia",
+  "Oviedo",
+  "Gijón",
+  "Salamanca",
+  "Burgos",
+  "Pamplona",
+  "Logroño",
+  "Castellón",
+  "Benidorm",
+  "Marbella",
+  "Almería",
+  "Córdoba",
+];
+
+const stopModes: Array<{
+  value: StopMode;
+  label: string;
+  helper: string;
+  placeholder: string;
+  examples: string[];
+}> = [
+  {
+    value: "percent",
+    label: "Por tramo de ruta",
+    helper: "Útil para parar a mitad, al primer tercio o al 70% del viaje.",
+    placeholder: "Ej: mitad, 60%, primer tercio...",
+    examples: ["mitad", "primer tercio", "segundo tercio", "60%", "75%"],
+  },
+  {
+    value: "near-place",
+    label: "Cerca de una ciudad",
+    helper: "La app busca el punto más cercano de la ruta a esa ciudad.",
+    placeholder: "Ej: Zaragoza, Albacete, Burgos...",
+    examples: ["Zaragoza", "Albacete", "Burgos", "Lleida", "Córdoba"],
+  },
+  {
+    value: "km-before-destination",
+    label: "Km antes del destino",
+    helper: "Perfecto si quieres repostar antes de llegar.",
+    placeholder: "Ej: 50",
+    examples: ["30", "50", "80", "100"],
+  },
+  {
+    value: "hours-from-start",
+    label: "Tras X horas de viaje",
+    helper: "Calcula una parada aproximada según la duración total de la ruta.",
+    placeholder: "Ej: 2,5",
+    examples: ["1,5", "2", "2,5", "3"],
+  },
+  {
+    value: "km-from-start",
+    label: "Tras X km desde origen",
+    helper: "Útil si sabes que quieres parar tras una distancia concreta.",
+    placeholder: "Ej: 250",
+    examples: ["100", "200", "300", "400"],
+  },
 ];
 
 function formatKm(meters?: number) {
@@ -110,22 +184,72 @@ function stationMapsUrl(station: Station) {
   )}`;
 }
 
+function AddressSuggestInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const matches = destinationSuggestions
+    .filter((item) => item.toLowerCase().includes(value.trim().toLowerCase()))
+    .slice(0, 7);
+
+  return (
+    <div className="relative">
+      <label className="mb-2 block text-sm font-black">{label}</label>
+      <input
+        value={value}
+        onFocus={() => setOpen(true)}
+        onChange={(event) => {
+          onChange(event.target.value);
+          setOpen(true);
+        }}
+        placeholder={placeholder}
+        className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+      />
+
+      {open && value.trim().length > 0 && matches.length > 0 && (
+        <div className="absolute left-0 right-0 top-[4.7rem] z-20 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+          {matches.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => {
+                onChange(item);
+                setOpen(false);
+              }}
+              className="block w-full px-4 py-3 text-left text-sm font-bold text-slate-700 hover:bg-slate-50"
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TripPlannerPage() {
   const [originMode, setOriginMode] = useState<"current" | "address">("current");
   const [originAddress, setOriginAddress] = useState("");
   const [originLocation, setOriginLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [destination, setDestination] = useState("");
   const [fuel, setFuel] = useState("gasolina95");
-  const [sortBy, setSortBy] = useState<"price" | "distance" | "balanced">("price");
-  const [stops, setStops] = useState<string[]>(["mitad"]);
+  const [sortBy, setSortBy] = useState<"price" | "distance" | "balanced">("balanced");
+  const [stops, setStops] = useState<StopForm[]>([{ mode: "percent", value: "mitad" }]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [result, setResult] = useState<TripResult | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useMemo(() => {
-    if (typeof window === "undefined") return;
-
+  useEffect(() => {
     const saved = localStorage.getItem("myVehicles");
 
     if (!saved) return;
@@ -136,6 +260,11 @@ export default function TripPlannerPage() {
       setVehicles([]);
     }
   }, []);
+
+  const selectedVehicle = useMemo(
+    () => vehicles.find((vehicle) => vehicle.id === selectedVehicleId) || null,
+    [vehicles, selectedVehicleId]
+  );
 
   function useCurrentLocation() {
     if (!navigator.geolocation) {
@@ -161,21 +290,41 @@ export default function TripPlannerPage() {
     );
   }
 
-  function changeStopCount(count: number) {
-    setStops((current) => {
-      const next = [...current];
+  function addStop() {
+    if (stops.length >= 4) {
+      alert("Por ahora puedes añadir hasta 4 paradas.");
+      return;
+    }
 
-      while (next.length < count) {
-        const defaults = ["mitad", "primer tercio", "segundo tercio", "75%"];
-        next.push(defaults[next.length] || "mitad");
-      }
+    const defaults: StopForm[] = [
+      { mode: "percent", value: "mitad" },
+      { mode: "hours-from-start", value: "2" },
+      { mode: "km-before-destination", value: "80" },
+      { mode: "near-place", value: "" },
+    ];
 
-      return next.slice(0, count);
-    });
+    setStops([...stops, defaults[stops.length] || { mode: "percent", value: "mitad" }]);
   }
 
-  function updateStop(index: number, value: string) {
-    setStops((current) => current.map((item, itemIndex) => (itemIndex === index ? value : item)));
+  function removeStop(index: number) {
+    setStops(stops.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  function updateStop(index: number, patch: Partial<StopForm>) {
+    setStops((current) =>
+      current.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+              ...item,
+              ...patch,
+              value:
+                patch.mode && patch.mode !== item.mode
+                  ? stopModes.find((mode) => mode.value === patch.mode)?.examples[0] || ""
+                  : patch.value ?? item.value,
+            }
+          : item
+      )
+    );
   }
 
   function selectVehicle(vehicleId: string) {
@@ -201,6 +350,13 @@ export default function TripPlannerPage() {
 
     if (!destination.trim()) {
       alert("Escribe el destino.");
+      return;
+    }
+
+    const emptyStop = stops.find((stop) => !stop.value.trim());
+
+    if (emptyStop) {
+      alert("Completa todas las paradas o elimina las que no quieras usar.");
       return;
     }
 
@@ -230,9 +386,11 @@ export default function TripPlannerPage() {
           fuel,
           sortBy,
           maxDetourKm: 5,
-          stops: stops.map((value, index) => ({
+          vehicle: selectedVehicle,
+          stops: stops.map((stop, index) => ({
             label: `Parada ${index + 1}`,
-            value,
+            mode: stop.mode,
+            value: stop.value,
           })),
         }),
       });
@@ -256,19 +414,39 @@ export default function TripPlannerPage() {
       <TopNav />
 
       <section className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-6 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-black text-emerald-600">Nuevo apartado</p>
-          <h1 className="mt-1 text-4xl font-black">Planifica tu viaje</h1>
-          <p className="mt-3 max-w-4xl leading-7 text-slate-600">
-            Indica origen, destino y dónde quieres parar. La app calcula la ruta
-            con Google Maps y busca gasolineras cercanas a cada parada, con un
-            desvío máximo aproximado de 5 km.
-          </p>
+        <div className="mb-6 grid gap-5 lg:grid-cols-[1.1fr_.9fr]">
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-sm font-black text-emerald-600">Ruta inteligente</p>
+            <h1 className="mt-1 text-4xl font-black">Planifica tu viaje</h1>
+            <p className="mt-3 max-w-4xl leading-7 text-slate-600">
+              Mete origen, destino y cuándo quieres parar. La app calcula la ruta,
+              busca gasolineras cerca de cada parada y limita el desvío a 5 km.
+            </p>
+          </div>
+
+          <div className="rounded-[2rem] border border-emerald-100 bg-emerald-50 p-6">
+            <h2 className="text-xl font-black text-emerald-950">Qué mejora esta versión</h2>
+            <ul className="mt-3 space-y-2 text-sm font-bold leading-6 text-emerald-900">
+              <li>• Puedes entrar desde el menú superior: “Planifica”.</li>
+              <li>• Puedes parar por ciudad, por % de ruta, por km o por horas.</li>
+              <li>• El destino tiene sugerencias rápidas tipo autocompletar.</li>
+              <li>• El resultado separa recomendada y alternativas.</li>
+            </ul>
+          </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[.9fr_1.1fr]">
+        <div className="grid gap-6 lg:grid-cols-[.92fr_1.08fr]">
           <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-2xl font-black">Datos del viaje</h2>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-black text-slate-500">Paso 1</p>
+                <h2 className="text-2xl font-black">Ruta</h2>
+              </div>
+
+              <span className="rounded-full bg-slate-100 px-4 py-2 text-xs font-black text-slate-600">
+                Desvío máximo: 5 km
+              </span>
+            </div>
 
             <div className="mt-5 space-y-5">
               <div>
@@ -306,48 +484,62 @@ export default function TripPlannerPage() {
                 )}
 
                 {originMode === "address" && (
-                  <input
-                    value={originAddress}
-                    onChange={(event) => setOriginAddress(event.target.value)}
-                    placeholder="Ej: Madrid, Calle Serrano..."
-                    className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                  />
+                  <div className="mt-3">
+                    <AddressSuggestInput
+                      label="Origen escrito"
+                      value={originAddress}
+                      onChange={setOriginAddress}
+                      placeholder="Ej: Madrid, Calle Serrano..."
+                    />
+                  </div>
                 )}
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-black">Destino</label>
-                <input
-                  value={destination}
-                  onChange={(event) => setDestination(event.target.value)}
-                  placeholder="Ej: Valencia, Málaga, San Sebastián..."
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                />
-              </div>
+              <AddressSuggestInput
+                label="Destino"
+                value={destination}
+                onChange={setDestination}
+                placeholder="Ej: Valencia, Málaga, San Sebastián..."
+              />
 
-              <div>
-                <p className="mb-2 text-sm font-black">Vehículo guardado</p>
-                {vehicles.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="mb-2 text-sm font-black">Vehículo</p>
+                  {vehicles.length > 0 ? (
+                    <select
+                      value={selectedVehicleId}
+                      onChange={(event) => selectVehicle(event.target.value)}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                    >
+                      <option value="">Sin vehículo concreto</option>
+                      {vehicles.map((vehicle) => (
+                        <option key={vehicle.id} value={vehicle.id}>
+                          {vehicle.name} · {vehicle.tankLiters} L · {vehicle.consumption} L/100 km
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Link
+                      href="/mis-vehiculos"
+                      className="block rounded-2xl bg-purple-50 px-4 py-3 text-sm font-black text-purple-700 hover:bg-purple-100"
+                    >
+                      Añadir vehículo
+                    </Link>
+                  )}
+                </div>
+
+                <div>
+                  <p className="mb-2 text-sm font-black">Ordenar por</p>
                   <select
-                    value={selectedVehicleId}
-                    onChange={(event) => selectVehicle(event.target.value)}
+                    value={sortBy}
+                    onChange={(event) => setSortBy(event.target.value as "price" | "distance" | "balanced")}
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
                   >
-                    <option value="">Sin vehículo concreto</option>
-                    {vehicles.map((vehicle) => (
-                      <option key={vehicle.id} value={vehicle.id}>
-                        {vehicle.name} · {vehicle.tankLiters} L · {vehicle.consumption} L/100 km
-                      </option>
-                    ))}
+                    <option value="balanced">Equilibrio precio/desvío</option>
+                    <option value="price">Más barata</option>
+                    <option value="distance">Menor desvío</option>
                   </select>
-                ) : (
-                  <Link
-                    href="/mis-vehiculos"
-                    className="block rounded-2xl bg-purple-50 px-4 py-3 text-sm font-black text-purple-700 hover:bg-purple-100"
-                  >
-                    Añadir vehículo para mejorar el análisis
-                  </Link>
-                )}
+                </div>
               </div>
 
               <div>
@@ -369,80 +561,89 @@ export default function TripPlannerPage() {
                 </div>
               </div>
 
+              <div className="rounded-3xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                Consejo: usa “Equilibrio” si no quieres que te mande a una gasolinera
+                algo más barata pero peor situada.
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="mb-2 text-sm font-black">Paradas</p>
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {[1, 2, 3, 4].map((count) => (
-                    <button
-                      key={count}
-                      onClick={() => changeStopCount(count)}
-                      className={
-                        stops.length === count
-                          ? "rounded-full bg-emerald-600 px-4 py-2 text-sm font-black text-white"
-                          : "rounded-full bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700 hover:bg-emerald-100"
-                      }
-                    >
-                      {count} {count === 1 ? "parada" : "paradas"}
-                    </button>
-                  ))}
-                </div>
+                <p className="text-sm font-black text-slate-500">Paso 2</p>
+                <h2 className="text-2xl font-black">Paradas</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Puedes mezclar varios criterios en el mismo viaje.
+                </p>
+              </div>
 
-                <div className="space-y-3">
-                  {stops.map((stop, index) => (
-                    <div key={index} className="rounded-3xl bg-slate-50 p-4">
-                      <label className="mb-2 block text-sm font-black">
-                        Parada {index + 1}
-                      </label>
-                      <input
-                        value={stop}
-                        onChange={(event) => updateStop(index, event.target.value)}
-                        placeholder="Ej: mitad, Zaragoza, 60%, antes de Valencia..."
-                        className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                      />
+              <button
+                onClick={addStop}
+                className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-500"
+              >
+                Añadir parada
+              </button>
+            </div>
 
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {stopPresets.map((preset) => (
-                          <button
-                            key={preset}
-                            onClick={() => updateStop(index, preset)}
-                            className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 hover:bg-slate-100"
-                          >
-                            {preset}
-                          </button>
-                        ))}
-                      </div>
+            <div className="mt-5 space-y-4">
+              {stops.map((stop, index) => {
+                const mode = stopModes.find((item) => item.value === stop.mode) || stopModes[0];
+
+                return (
+                  <article key={index} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="font-black">Parada {index + 1}</h3>
+
+                      {stops.length > 1 && (
+                        <button
+                          onClick={() => removeStop(index)}
+                          className="rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-600 hover:bg-red-100"
+                        >
+                          Quitar
+                        </button>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
 
-              <div>
-                <p className="mb-2 text-sm font-black">Ordenar recomendaciones</p>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {[
-                    ["price", "Más barata"],
-                    ["distance", "Menor desvío"],
-                    ["balanced", "Equilibrio"],
-                  ].map(([value, label]) => (
-                    <button
-                      key={value}
-                      onClick={() => setSortBy(value as "price" | "distance" | "balanced")}
-                      className={
-                        sortBy === value
-                          ? "rounded-2xl bg-slate-950 px-3 py-3 text-sm font-black text-white"
-                          : "rounded-2xl bg-slate-100 px-3 py-3 text-sm font-black text-slate-700 hover:bg-slate-200"
-                      }
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                    <div className="mt-3 grid gap-3 md:grid-cols-[.9fr_1.1fr]">
+                      <select
+                        value={stop.mode}
+                        onChange={(event) => updateStop(index, { mode: event.target.value as StopMode })}
+                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                      >
+                        {stopModes.map((item) => (
+                          <option key={item.value} value={item.value}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
 
-              <div className="rounded-3xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-                Este MVP limita las recomendaciones a gasolineras situadas a máximo
-                5 km aproximados de la zona de parada sobre la ruta.
-              </div>
+                      <input
+                        value={stop.value}
+                        onChange={(event) => updateStop(index, { value: event.target.value })}
+                        placeholder={mode.placeholder}
+                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                      />
+                    </div>
+
+                    <p className="mt-2 text-xs font-bold leading-5 text-slate-500">
+                      {mode.helper}
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {mode.examples.map((example) => (
+                        <button
+                          key={example}
+                          onClick={() => updateStop(index, { value: example })}
+                          className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 hover:bg-slate-100"
+                        >
+                          {example}
+                        </button>
+                      ))}
+                    </div>
+                  </article>
+                );
+              })}
 
               <button
                 onClick={planTrip}
@@ -453,128 +654,129 @@ export default function TripPlannerPage() {
               </button>
             </div>
           </section>
+        </div>
 
-          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h2 className="text-2xl font-black">Resultado</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Ruta + mejores gasolineras cerca de cada parada.
-                </p>
-              </div>
-
-              {result?.googleMapsUrl && (
-                <a
-                  href={result.googleMapsUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-black text-white hover:bg-slate-800"
-                >
-                  Abrir ruta en Google Maps
-                </a>
-              )}
+        <section className="mt-6 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-black text-slate-500">Paso 3</p>
+              <h2 className="text-2xl font-black">Resultado</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Ruta + mejores gasolineras cerca de cada parada.
+              </p>
             </div>
 
-            {!result && (
-              <div className="mt-6 rounded-3xl bg-slate-50 p-8 text-center text-slate-500">
-                Cuando analices un viaje, aquí aparecerán las paradas recomendadas
-                y las gasolineras más interesantes.
-              </div>
+            {result?.googleMapsUrl && (
+              <a
+                href={result.googleMapsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-black text-white hover:bg-slate-800"
+              >
+                Abrir ruta en Google Maps
+              </a>
             )}
+          </div>
 
-            {result && (
-              <div className="mt-6 space-y-5">
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-3xl bg-slate-50 p-4">
-                    <p className="text-xs font-black uppercase text-slate-500">Distancia</p>
-                    <p className="mt-1 text-xl font-black">
-                      {formatKm(result.route.distanceMeters)}
-                    </p>
-                  </div>
+          {!result && (
+            <div className="mt-6 rounded-3xl bg-slate-50 p-8 text-center text-slate-500">
+              Cuando analices un viaje, aquí aparecerán las paradas recomendadas
+              y las gasolineras más interesantes.
+            </div>
+          )}
 
-                  <div className="rounded-3xl bg-slate-50 p-4">
-                    <p className="text-xs font-black uppercase text-slate-500">Duración</p>
-                    <p className="mt-1 text-xl font-black">{result.route.duration}</p>
-                  </div>
-
-                  <div className="rounded-3xl bg-slate-50 p-4">
-                    <p className="text-xs font-black uppercase text-slate-500">Desvío máx.</p>
-                    <p className="mt-1 text-xl font-black">{result.maxDetourKm} km</p>
-                  </div>
+          {result && (
+            <div className="mt-6 space-y-5">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-3xl bg-slate-50 p-4">
+                  <p className="text-xs font-black uppercase text-slate-500">Distancia</p>
+                  <p className="mt-1 text-xl font-black">
+                    {formatKm(result.route.distanceMeters)}
+                  </p>
                 </div>
 
-                {result.stops.map((stop, index) => (
-                  <article key={stop.id} className="rounded-[1.7rem] border border-slate-200 p-5">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <p className="text-sm font-black text-emerald-600">
-                          Parada {index + 1}
-                        </p>
-                        <h3 className="text-xl font-black">{stop.label}</h3>
-                        <p className="mt-1 text-sm text-slate-500">
-                          Buscando gasolineras a máximo {stop.radiusKm} km.
-                        </p>
-                      </div>
-                    </div>
+                <div className="rounded-3xl bg-slate-50 p-4">
+                  <p className="text-xs font-black uppercase text-slate-500">Duración</p>
+                  <p className="mt-1 text-xl font-black">{result.route.duration}</p>
+                </div>
 
-                    {stop.stations.length === 0 && (
-                      <p className="mt-4 rounded-3xl bg-red-50 p-4 text-sm font-bold text-red-700">
-                        No he encontrado gasolineras dentro del desvío máximo para esta parada.
+                <div className="rounded-3xl bg-slate-50 p-4">
+                  <p className="text-xs font-black uppercase text-slate-500">Desvío máx.</p>
+                  <p className="mt-1 text-xl font-black">{result.maxDetourKm} km</p>
+                </div>
+              </div>
+
+              {result.stops.map((stop, index) => (
+                <article key={stop.id} className="rounded-[1.7rem] border border-slate-200 p-5">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-sm font-black text-emerald-600">
+                        Parada {index + 1}
                       </p>
-                    )}
+                      <h3 className="text-xl font-black">{stop.label}</h3>
+                      <p className="mt-1 text-sm text-slate-500">
+                        Buscando gasolineras a máximo {stop.radiusKm} km de ese punto de ruta.
+                      </p>
+                    </div>
+                  </div>
 
-                    <div className="mt-4 space-y-3">
-                      {stop.stations.map((station, stationIndex) => (
-                        <div
-                          key={`${station.id || station.station_id || stationIndex}`}
-                          className={
-                            stationIndex === 0
-                              ? "rounded-3xl border-2 border-emerald-300 bg-emerald-50 p-4"
-                              : "rounded-3xl bg-slate-50 p-4"
-                          }
-                        >
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                              <p className="text-xs font-black uppercase text-slate-500">
-                                {stationIndex === 0 ? "Recomendada" : "Alternativa"}
-                              </p>
-                              <h4 className="mt-1 text-lg font-black">
-                                {station.name || "Gasolinera"}
-                              </h4>
-                              <p className="text-sm text-slate-500">
-                                {station.brand || "Marca no indicada"} · {station.address || ""}
-                              </p>
-                              <p className="text-sm text-slate-500">
-                                {station.municipality || ""} {station.province ? `(${station.province})` : ""}
-                              </p>
-                            </div>
+                  {stop.stations.length === 0 && (
+                    <p className="mt-4 rounded-3xl bg-red-50 p-4 text-sm font-bold text-red-700">
+                      No he encontrado gasolineras dentro del desvío máximo para esta parada.
+                    </p>
+                  )}
 
-                            <div className="sm:text-right">
-                              <p className="text-2xl font-black">
-                                {Number(station.price).toFixed(3)} €/L
-                              </p>
-                              <p className="text-sm font-bold text-slate-500">
-                                Desvío aprox. {formatDetour(station.detourMeters)}
-                              </p>
-                              <a
-                                href={stationMapsUrl(station)}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-3 inline-flex rounded-2xl bg-white px-4 py-2 text-sm font-black text-slate-800 shadow-sm hover:bg-slate-100"
-                              >
-                                Ver en Maps
-                              </a>
-                            </div>
+                  <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                    {stop.stations.map((station, stationIndex) => (
+                      <div
+                        key={`${station.id || station.station_id || stationIndex}`}
+                        className={
+                          stationIndex === 0
+                            ? "rounded-3xl border-2 border-emerald-300 bg-emerald-50 p-4"
+                            : "rounded-3xl bg-slate-50 p-4"
+                        }
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-xs font-black uppercase text-slate-500">
+                              {stationIndex === 0 ? "Recomendada" : "Alternativa"}
+                            </p>
+                            <h4 className="mt-1 text-lg font-black">
+                              {station.name || "Gasolinera"}
+                            </h4>
+                            <p className="text-sm text-slate-500">
+                              {station.brand || "Marca no indicada"} · {station.address || ""}
+                            </p>
+                            <p className="text-sm text-slate-500">
+                              {station.municipality || ""} {station.province ? `(${station.province})` : ""}
+                            </p>
+                          </div>
+
+                          <div className="sm:text-right">
+                            <p className="text-2xl font-black">
+                              {Number(station.price).toFixed(3)} €/L
+                            </p>
+                            <p className="text-sm font-bold text-slate-500">
+                              Desvío aprox. {formatDetour(station.detourMeters)}
+                            </p>
+                            <a
+                              href={stationMapsUrl(station)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-3 inline-flex rounded-2xl bg-white px-4 py-2 text-sm font-black text-slate-800 shadow-sm hover:bg-slate-100"
+                            >
+                              Ver en Maps
+                            </a>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
       </section>
     </main>
   );
