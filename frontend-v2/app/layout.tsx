@@ -1,5 +1,4 @@
 import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -15,17 +14,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Gasolineras App | Ahorra al repostar",
+  title: "Rivvo | Ahorro inteligente en repostaje",
   description:
-    "Compara precios oficiales de gasolineras en España, busca cerca de ti y planifica dónde repostar en ruta.",
-  applicationName: "Gasolineras App",
-  keywords: [
-    "gasolineras",
-    "precio gasolina",
-    "diesel barato",
-    "gasolineras España",
-    "repostar barato",
-  ],
+    "Rivvo te ayuda a encontrar gasolineras, guardar favoritas, comparar precios y planificar tus viajes con un enfoque inteligente en ahorro y movilidad.",
+  applicationName: "Rivvo",
+  icons: {
+    icon: "/brand/rivvo-app-icon.png",
+    apple: "/brand/rivvo-app-icon.png",
+  },
 };
 
 export default function RootLayout({
@@ -38,10 +34,9 @@ export default function RootLayout({
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-[#f7f9fc] text-slate-950">
+      <body className="min-h-full flex flex-col bg-[var(--rivvo-surface)] text-slate-900">
         {children}
         <Analytics />
-        <SpeedInsights />
       </body>
     </html>
   );
