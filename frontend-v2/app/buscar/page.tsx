@@ -192,6 +192,7 @@ export default function SearchPage() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [areaInfo, setAreaInfo] = useState<AreaInfo | null>(null);
   const [referencePrice, setReferencePrice] = useState<number | null>(null);
+  const [sortMode, setSortMode] = useState<"price" | "distance">("price");
 
   async function requestUserLocation() {
     if (!navigator.geolocation) return;
@@ -729,106 +730,127 @@ export default function SearchPage() {
     return prices.reduce((acc, price) => acc + price, 0) / prices.length;
   }, [referencePrice, stations]);
 
+  const sortedStations = useMemo(() => {
+    const copy = [...stations];
+
+    if (favoriteOnly) return copy;
+
+    if (sortMode === "distance") {
+      return copy.sort((a, b) => {
+        const distanceA = a.distance_meters ?? Number.POSITIVE_INFINITY;
+        const distanceB = b.distance_meters ?? Number.POSITIVE_INFINITY;
+
+        if (distanceA !== distanceB) return distanceA - distanceB;
+
+        return Number(a.price) - Number(b.price);
+      });
+    }
+
+    return copy.sort((a, b) => {
+      const priceDiff = Number(a.price) - Number(b.price);
+      if (priceDiff !== 0) return priceDiff;
+
+      return (a.distance_meters ?? Number.POSITIVE_INFINITY) - (b.distance_meters ?? Number.POSITIVE_INFINITY);
+    });
+  }, [stations, sortMode, favoriteOnly]);
+
   return (
     <main className="min-h-screen bg-[#f7f9fc] text-slate-950">
       <TopNav />
 
       <section className="mx-auto max-w-7xl px-4 py-4">
-        <div className="relative z-[1200] mb-4 rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="grid gap-4 xl:grid-cols-[1.25fr_.75fr]">
-            <div>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-black text-blue-600">Centro de búsqueda</p>
-                  <h1 className="text-2xl font-black">Busca, filtra y compara sin bajar</h1>
-                </div>
-
-                {loading && (
-                  <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">
-                    Cargando...
-                  </span>
-                )}
+        <div className="relative z-[1200] mb-4 grid items-start gap-4 xl:grid-cols-[1.35fr_.65fr]">
+          <div className="rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-black text-blue-600">Centro de búsqueda</p>
+                <h1 className="text-2xl font-black">Busca, filtra y compara</h1>
               </div>
 
-              <div className="relative mt-3">
-                <input
-                  value={searchAddress}
-                  onChange={(e) => {
-                    setSearchAddress(e.target.value);
-                    setSelectedAddress(null);
-                  }}
-                  placeholder="Ej: Calle Serrano 45, Madrid"
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                />
-
-                {searchAddress.trim().length >= 3 && addressSuggestions.length > 0 && (
-                  <div className="absolute left-0 right-0 top-[54px] z-[2800] max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
-                    {addressSuggestions.map((suggestion) => (
-                      <button
-                        key={`${suggestion.lat}-${suggestion.lon}-${suggestion.label}`}
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => {
-                          setSelectedAddress(suggestion);
-                          setSearchAddress(suggestion.label);
-                          setAddressSuggestions([]);
-                        }}
-                        className="block w-full px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-blue-50"
-                      >
-                        {suggestion.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                <button
-                  onClick={searchByAddress}
-                  className="rounded-2xl bg-blue-600 px-4 py-3 font-black text-white shadow-sm hover:bg-blue-500"
-                >
-                  Buscar esta zona
-                </button>
-
-                <button
-                  onClick={() => loadNearby(fuel)}
-                  className="rounded-2xl bg-slate-950 px-4 py-3 font-black text-white shadow-sm hover:bg-slate-800"
-                >
-                  Usar mi ubicación
-                </button>
-
-                <button
-                  onClick={loadManualRanking}
-                  className="rounded-2xl bg-emerald-500 px-4 py-3 font-black text-white shadow-sm hover:bg-emerald-400"
-                >
-                  Aplicar filtros
-                </button>
-              </div>
+              {loading && (
+                <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">
+                  Cargando...
+                </span>
+              )}
             </div>
 
-            <div className="grid content-start gap-3">
-              <div>
-                <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Combustible</p>
-                <div className="flex flex-wrap gap-2">
-                  {fuelOptions.slice(0, 4).map((option) => (
+            <div className="relative mt-3">
+              <input
+                value={searchAddress}
+                onChange={(e) => {
+                  setSearchAddress(e.target.value);
+                  setSelectedAddress(null);
+                }}
+                placeholder="Ej: Calle Serrano 45, Madrid"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+              />
+
+              {searchAddress.trim().length >= 3 && addressSuggestions.length > 0 && (
+                <div className="absolute left-0 right-0 top-[54px] z-[2800] max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                  {addressSuggestions.map((suggestion) => (
                     <button
-                      key={option.value}
-                      onClick={() => setFuel(option.value)}
-                      className={
-                        fuel === option.value
-                          ? "rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white"
-                          : "rounded-full bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-200"
-                      }
+                      key={`${suggestion.lat}-${suggestion.lon}-${suggestion.label}`}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        setSelectedAddress(suggestion);
+                        setSearchAddress(suggestion.label);
+                        setAddressSuggestions([]);
+                      }}
+                      className="block w-full px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-blue-50"
                     >
-                      {option.label}
+                      {suggestion.label}
                     </button>
                   ))}
                 </div>
-              </div>
+              )}
+            </div>
 
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <button
+                onClick={searchByAddress}
+                className="rounded-2xl bg-blue-600 px-4 py-3 font-black text-white shadow-sm hover:bg-blue-500"
+              >
+                Buscar esta zona
+              </button>
+
+              <button
+                onClick={() => loadNearby(fuel)}
+                className="rounded-2xl bg-slate-950 px-4 py-3 font-black text-white shadow-sm hover:bg-slate-800"
+              >
+                Usar mi ubicación
+              </button>
+
+              <button
+                onClick={loadManualRanking}
+                className="rounded-2xl bg-emerald-500 px-4 py-3 font-black text-white shadow-sm hover:bg-emerald-400"
+              >
+                Aplicar filtros
+              </button>
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
+          <div className="self-start rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Combustible</p>
+            <div className="flex flex-wrap gap-2">
+              {fuelOptions.slice(0, 4).map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setFuel(option.value)}
+                  className={
+                    fuel === option.value
+                      ? "rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white"
+                      : "rounded-full bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-200"
+                  }
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="relative z-[1100] mb-4 rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
             <div className="relative">
               <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Marcas</p>
 
@@ -1056,24 +1078,55 @@ export default function SearchPage() {
 
           <section className="space-y-4 xl:order-1">
             <div className="rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-center justify-between gap-4">
+              <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h2 className="text-xl font-black">Gasolineras encontradas</h2>
                   <p className="text-sm text-slate-500">
                     {favoriteOnly
                       ? "Mostrando solo tu gasolinera favorita, sin compararla con otras."
                       : selectedBrands.length > 0
-                        ? `Ordenadas por precio solo entre: ${selectedBrands.join(", ")}.`
-                        : "Ordenadas por precio dentro de tu búsqueda."}
+                        ? `Ordenadas por ${sortMode === "price" ? "precio" : "distancia"} solo entre: ${selectedBrands.join(", ")}.`
+                        : `Ordenadas por ${sortMode === "price" ? "precio" : "distancia"} dentro de tu búsqueda.`}
                   </p>
                 </div>
-                {loading && (
-                  <p className="text-sm font-black text-emerald-600">Cargando...</p>
-                )}
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {!favoriteOnly && stations.length > 0 && (
+                    <div className="flex rounded-2xl bg-slate-100 p-1">
+                      <button
+                        type="button"
+                        onClick={() => setSortMode("price")}
+                        className={
+                          sortMode === "price"
+                            ? "rounded-xl bg-slate-950 px-4 py-2 text-xs font-black text-white shadow-sm"
+                            : "rounded-xl px-4 py-2 text-xs font-black text-slate-700 hover:bg-white"
+                        }
+                      >
+                        Más baratas
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSortMode("distance")}
+                        className={
+                          sortMode === "distance"
+                            ? "rounded-xl bg-blue-600 px-4 py-2 text-xs font-black text-white shadow-sm"
+                            : "rounded-xl px-4 py-2 text-xs font-black text-slate-700 hover:bg-white"
+                        }
+                      >
+                        Más cercanas
+                      </button>
+                    </div>
+                  )}
+
+                  {loading && (
+                    <p className="text-sm font-black text-emerald-600">Cargando...</p>
+                  )}
+                </div>
               </div>
 
               <div className="grid gap-4">
-                {stations.map((station, index) => (
+                {sortedStations.map((station, index) => (
                   <StationCard
                     key={station.id}
                     station={station}
