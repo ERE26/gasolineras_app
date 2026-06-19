@@ -105,7 +105,6 @@ const quickDestinations = [
 const stopModes: Array<{
   value: StopMode;
   label: string;
-  shortLabel: string;
   helper: string;
   placeholder: string;
   examples: string[];
@@ -113,41 +112,36 @@ const stopModes: Array<{
   {
     value: "percent",
     label: "Por tramo de ruta",
-    shortLabel: "Tramo",
-    helper: "Para parar a mitad, al primer tercio o al 70% del viaje.",
-    placeholder: "Ej: mitad, 60%, primer tercio...",
+    helper: "Ej: mitad, 60%, primer tercio.",
+    placeholder: "mitad",
     examples: ["mitad", "primer tercio", "segundo tercio", "60%", "75%"],
   },
   {
     value: "near-place",
     label: "Cerca de una ciudad",
-    shortLabel: "Ciudad",
-    helper: "Busca el punto de la ruta más cercano a esa ciudad.",
-    placeholder: "Ej: Zaragoza, Albacete, Burgos...",
+    helper: "Ej: Zaragoza, Albacete, Burgos.",
+    placeholder: "Zaragoza",
     examples: ["Zaragoza", "Albacete", "Burgos", "Lleida", "Córdoba"],
   },
   {
     value: "km-before-destination",
     label: "Km antes del destino",
-    shortLabel: "Antes de llegar",
-    helper: "Para repostar antes de llegar al destino final.",
-    placeholder: "Ej: 50",
+    helper: "Ej: 50 = buscar 50 km antes de llegar.",
+    placeholder: "50",
     examples: ["30", "50", "80", "100"],
   },
   {
     value: "hours-from-start",
     label: "Tras X horas de viaje",
-    shortLabel: "Horas",
-    helper: "Calcula una parada aproximada tras X horas conduciendo.",
-    placeholder: "Ej: 2,5",
+    helper: "Ej: 2,5 = parar tras dos horas y media.",
+    placeholder: "2",
     examples: ["1,5", "2", "2,5", "3"],
   },
   {
     value: "km-from-start",
     label: "Tras X km desde origen",
-    shortLabel: "Km desde origen",
-    helper: "Para parar tras una distancia concreta desde el inicio.",
-    placeholder: "Ej: 250",
+    helper: "Ej: 250 = buscar a los 250 km de ruta.",
+    placeholder: "250",
     examples: ["100", "200", "300", "400"],
   },
 ];
@@ -257,20 +251,16 @@ function AddressSuggestInput({
           onChange(event.target.value);
           setOpen(true);
         }}
-        onBlur={() => {
-          window.setTimeout(() => setOpen(false), 150);
-        }}
+        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
         placeholder={placeholder}
-        className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
       />
       {helper && <p className="mt-2 text-xs font-bold text-slate-500">{helper}</p>}
 
       {open && value.trim().length >= 2 && hasSuggestions && (
-        <div className="absolute left-0 right-0 top-[4.6rem] z-30 max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-xl">
+        <div className="absolute left-0 right-0 top-[4.6rem] z-50 max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-xl">
           {loading && (
-            <div className="px-4 py-3 text-sm font-bold text-slate-500">
-              Buscando direcciones...
-            </div>
+            <div className="px-4 py-3 text-sm font-bold text-slate-500">Buscando direcciones...</div>
           )}
 
           {suggestions.map((item) => (
@@ -284,9 +274,7 @@ function AddressSuggestInput({
               className="block w-full border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50"
             >
               <span className="block text-sm font-black text-slate-800">{item.label}</span>
-              <span className="mt-1 block text-xs font-bold text-slate-500">
-                Dirección encontrada por Google
-              </span>
+              <span className="mt-1 block text-xs font-bold text-slate-500">Dirección encontrada por Google</span>
             </button>
           ))}
 
@@ -311,49 +299,6 @@ function AddressSuggestInput({
   );
 }
 
-function AccordionCard({
-  title,
-  subtitle,
-  badge,
-  open,
-  onToggle,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  badge?: string;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="overflow-hidden rounded-[1.7rem] border border-slate-200 bg-white shadow-sm">
-      <button
-        onClick={onToggle}
-        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left hover:bg-slate-50"
-      >
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xl font-black">{title}</h2>
-            {badge && (
-              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">
-                {badge}
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-sm font-bold text-slate-500">{subtitle}</p>
-        </div>
-
-        <span className="rounded-full bg-slate-100 px-3 py-2 text-sm font-black text-slate-600">
-          {open ? "Ocultar" : "Abrir"}
-        </span>
-      </button>
-
-      {open && <div className="border-t border-slate-100 p-5">{children}</div>}
-    </section>
-  );
-}
-
 export default function TripPlannerPage() {
   const [originMode, setOriginMode] = useState<"current" | "address">("current");
   const [originAddress, setOriginAddress] = useState("");
@@ -366,12 +311,8 @@ export default function TripPlannerPage() {
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [result, setResult] = useState<TripResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [openPanels, setOpenPanels] = useState({
-    route: true,
-    stops: true,
-    options: false,
-    results: true,
-  });
+  const [showOptions, setShowOptions] = useState(false);
+  const [showAllStops, setShowAllStops] = useState(true);
 
   useEffect(() => {
     const saved = localStorage.getItem("myVehicles");
@@ -389,13 +330,6 @@ export default function TripPlannerPage() {
     () => vehicles.find((vehicle) => vehicle.id === selectedVehicleId) || null,
     [vehicles, selectedVehicleId]
   );
-
-  function togglePanel(panel: keyof typeof openPanels) {
-    setOpenPanels((current) => ({
-      ...current,
-      [panel]: !current[panel],
-    }));
-  }
 
   function useCurrentLocation() {
     if (!navigator.geolocation) {
@@ -435,6 +369,7 @@ export default function TripPlannerPage() {
     ];
 
     setStops([...stops, defaults[stops.length] || { mode: "percent", value: "mitad" }]);
+    setShowAllStops(true);
   }
 
   function removeStop(index: number) {
@@ -462,9 +397,7 @@ export default function TripPlannerPage() {
     setSelectedVehicleId(vehicleId);
     const vehicle = vehicles.find((item) => item.id === vehicleId);
 
-    if (vehicle?.fuel) {
-      setFuel(vehicle.fuel);
-    }
+    if (vehicle?.fuel) setFuel(vehicle.fuel);
   }
 
   async function planTrip() {
@@ -492,7 +425,6 @@ export default function TripPlannerPage() {
 
     setLoading(true);
     setResult(null);
-    setOpenPanels((current) => ({ ...current, results: true }));
 
     try {
       const response = await fetch("/api/trip-plan", {
@@ -503,17 +435,9 @@ export default function TripPlannerPage() {
         body: JSON.stringify({
           origin:
             originMode === "current"
-              ? {
-                  lat: originLocation?.lat,
-                  lon: originLocation?.lon,
-                  label: "Mi ubicación actual",
-                }
-              : {
-                  address: originAddress.trim(),
-                },
-          destination: {
-            address: destination.trim(),
-          },
+              ? { lat: originLocation?.lat, lon: originLocation?.lon, label: "Mi ubicación actual" }
+              : { address: originAddress.trim() },
+          destination: { address: destination.trim() },
           fuel,
           sortBy,
           maxDetourKm: 5,
@@ -546,47 +470,44 @@ export default function TripPlannerPage() {
     <main className="min-h-screen bg-[#f7f9fc] text-slate-950">
       <TopNav />
 
-      <section className="mx-auto max-w-7xl px-5 py-6">
-        <div className="mb-5 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="grid gap-5 lg:grid-cols-[1.2fr_.8fr] lg:items-center">
+      <section className="mx-auto max-w-7xl px-4 py-6">
+        <div className="mb-4 rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-black text-emerald-600">Planifica tu viaje</p>
-              <h1 className="mt-1 text-3xl font-black leading-tight md:text-4xl">
-                Reposta en ruta sin desviarte más de 5 km
-              </h1>
-              <p className="mt-3 max-w-4xl leading-7 text-slate-600">
-                Elige origen, destino y paradas. La app calcula la ruta y busca
-                gasolineras baratas cerca de cada punto.
+              <h1 className="text-3xl font-black">Repostaje inteligente en ruta</h1>
+              <p className="mt-2 max-w-3xl text-sm font-bold leading-6 text-slate-500">
+                Origen, destino, paradas y resultado en una misma pantalla. Desvío máximo aproximado: 5 km.
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-3xl bg-emerald-50 p-3">
-                <p className="text-xs font-black text-emerald-700">Ruta</p>
-                <p className="mt-1 text-lg font-black">Google</p>
-              </div>
-              <div className="rounded-3xl bg-blue-50 p-3">
-                <p className="text-xs font-black text-blue-700">Desvío</p>
-                <p className="mt-1 text-lg font-black">≤ 5 km</p>
-              </div>
-              <div className="rounded-3xl bg-purple-50 p-3">
-                <p className="text-xs font-black text-purple-700">Criterio</p>
-                <p className="mt-1 text-lg font-black">Precio</p>
-              </div>
+            <div className="grid grid-cols-3 gap-2 text-center text-xs font-black">
+              <div className="rounded-2xl bg-emerald-50 px-3 py-2 text-emerald-700">Ruta Google</div>
+              <div className="rounded-2xl bg-blue-50 px-3 py-2 text-blue-700">≤ 5 km</div>
+              <div className="rounded-2xl bg-purple-50 px-3 py-2 text-purple-700">Precio/desvío</div>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[.9fr_1.1fr]">
-          <div className="space-y-4">
-            <AccordionCard
-              title="Ruta"
-              subtitle="Origen y destino del viaje"
-              badge={originLocation || originAddress || destination ? "En curso" : "Paso 1"}
-              open={openPanels.route}
-              onToggle={() => togglePanel("route")}
-            >
-              <div className="space-y-5">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,.95fr)_minmax(420px,1.05fr)]">
+          <section className="space-y-4">
+            <div className="rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-slate-500">Paso 1</p>
+                  <h2 className="text-2xl font-black">Ruta</h2>
+                </div>
+
+                <button
+                  onClick={planTrip}
+                  disabled={loading}
+                  className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? "Analizando..." : "Analizar"}
+                </button>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
                 <div>
                   <p className="mb-2 text-sm font-black">Origen</p>
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -598,7 +519,7 @@ export default function TripPlannerPage() {
                           : "rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-200"
                       }
                     >
-                      Usar mi ubicación
+                      Mi ubicación
                     </button>
 
                     <button
@@ -609,15 +530,13 @@ export default function TripPlannerPage() {
                           : "rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-200"
                       }
                     >
-                      Escribir origen
+                      Escribir
                     </button>
                   </div>
 
                   {originMode === "current" && (
-                    <p className="mt-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
-                      {originLocation
-                        ? "Ubicación lista. Ya puedes analizar la ruta."
-                        : "Pulsa “Usar mi ubicación” para guardarla como origen."}
+                    <p className="mt-2 rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800">
+                      {originLocation ? "Ubicación lista." : "Pulsa “Mi ubicación” para activarla."}
                     </p>
                   )}
 
@@ -627,8 +546,8 @@ export default function TripPlannerPage() {
                         label="Origen escrito"
                         value={originAddress}
                         onChange={setOriginAddress}
-                        placeholder="Ej: Calle Alcalá 45, Madrid..."
-                        helper="Elige una sugerencia para evitar confundir calles repetidas."
+                        placeholder="Ej: Calle Alcalá 45, Madrid"
+                        helper="Elige sugerencia para evitar calles repetidas."
                       />
                     </div>
                   )}
@@ -638,166 +557,189 @@ export default function TripPlannerPage() {
                   label="Destino"
                   value={destination}
                   onChange={setDestination}
-                  placeholder="Ej: Hotel en Valencia, Málaga centro..."
-                  helper="Puedes escribir ciudad, dirección, hotel o zona."
+                  placeholder="Ej: Valencia, hotel, dirección..."
+                  helper="Puedes escribir ciudad, dirección o zona."
                 />
               </div>
-            </AccordionCard>
+            </div>
 
-            <AccordionCard
-              title="Paradas"
-              subtitle={`${stops.length} ${stops.length === 1 ? "parada configurada" : "paradas configuradas"}`}
-              badge="Paso 2"
-              open={openPanels.stops}
-              onToggle={() => togglePanel("stops")}
-            >
-              <div className="space-y-4">
-                {stops.map((stop, index) => {
-                  const mode = stopModes.find((item) => item.value === stop.mode) || stopModes[0];
+            <div className="rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-slate-500">Paso 2</p>
+                  <h2 className="text-2xl font-black">Paradas</h2>
+                </div>
 
-                  return (
-                    <article key={index} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <h3 className="font-black">Parada {index + 1}</h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowAllStops((show) => !show)}
+                    className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-200"
+                  >
+                    {showAllStops ? "Ocultar" : "Ver"}
+                  </button>
 
-                        {stops.length > 1 && (
-                          <button
-                            onClick={() => removeStop(index)}
-                            className="rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-600 hover:bg-red-100"
-                          >
-                            Quitar
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {stopModes.map((item) => (
-                          <button
-                            key={item.value}
-                            onClick={() => updateStop(index, { mode: item.value })}
-                            className={
-                              stop.mode === item.value
-                                ? "rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white"
-                                : "rounded-full bg-white px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-100"
-                            }
-                          >
-                            {item.shortLabel}
-                          </button>
-                        ))}
-                      </div>
-
-                      <input
-                        value={stop.value}
-                        onChange={(event) => updateStop(index, { value: event.target.value })}
-                        placeholder={mode.placeholder}
-                        className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                      />
-
-                      <p className="mt-2 text-xs font-bold leading-5 text-slate-500">
-                        {mode.helper}
-                      </p>
-
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {mode.examples.map((example) => (
-                          <button
-                            key={example}
-                            onClick={() => updateStop(index, { value: example })}
-                            className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 hover:bg-slate-100"
-                          >
-                            {example}
-                          </button>
-                        ))}
-                      </div>
-                    </article>
-                  );
-                })}
-
-                <button
-                  onClick={addStop}
-                  className="w-full rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 hover:bg-emerald-100"
-                >
-                  Añadir otra parada
-                </button>
+                  <button
+                    onClick={addStop}
+                    className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 hover:bg-emerald-100"
+                  >
+                    Añadir
+                  </button>
+                </div>
               </div>
-            </AccordionCard>
 
-            <AccordionCard
-              title="Opciones"
-              subtitle="Combustible, vehículo y forma de ordenar"
-              badge="Ajustes"
-              open={openPanels.options}
-              onToggle={() => togglePanel("options")}
-            >
-              <div className="space-y-5">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <p className="mb-2 text-sm font-black">Vehículo</p>
-                    {vehicles.length > 0 ? (
+              {showAllStops && (
+                <div className="space-y-3">
+                  {stops.map((stop, index) => {
+                    const mode = stopModes.find((item) => item.value === stop.mode) || stopModes[0];
+
+                    return (
+                      <article key={index} className="rounded-[1.4rem] border border-slate-200 bg-slate-50 p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <h3 className="font-black">Parada {index + 1}</h3>
+
+                          {stops.length > 1 && (
+                            <button
+                              onClick={() => removeStop(index)}
+                              className="rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-600 hover:bg-red-100"
+                            >
+                              Quitar
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-[.9fr_1.1fr]">
+                          <div>
+                            <label className="mb-2 block text-xs font-black uppercase text-slate-500">
+                              Tipo de parada
+                            </label>
+                            <select
+                              value={stop.mode}
+                              onChange={(event) => updateStop(index, { mode: event.target.value as StopMode })}
+                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                            >
+                              {stopModes.map((item) => (
+                                <option key={item.value} value={item.value}>
+                                  {item.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-xs font-black uppercase text-slate-500">
+                              Valor
+                            </label>
+                            <input
+                              value={stop.value}
+                              onChange={(event) => updateStop(index, { value: event.target.value })}
+                              placeholder={mode.placeholder}
+                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                            />
+                          </div>
+                        </div>
+
+                        <p className="mt-2 text-xs font-bold text-slate-500">{mode.helper}</p>
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {mode.examples.map((example) => (
+                            <button
+                              key={example}
+                              onClick={() => updateStop(index, { value: example })}
+                              className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 hover:bg-slate-100"
+                            >
+                              {example}
+                            </button>
+                          ))}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-[1.8rem] border border-slate-200 bg-white shadow-sm">
+              <button
+                onClick={() => setShowOptions((show) => !show)}
+                className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left hover:bg-slate-50"
+              >
+                <div>
+                  <h2 className="text-xl font-black">Opciones</h2>
+                  <p className="text-sm font-bold text-slate-500">
+                    {fuelOptions.find((item) => item.value === fuel)?.label} ·{" "}
+                    {sortBy === "balanced" ? "Equilibrio" : sortBy === "price" ? "Más barata" : "Menor desvío"}
+                  </p>
+                </div>
+
+                <span className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-black text-slate-700">
+                  {showOptions ? "Ocultar" : "Abrir"}
+                </span>
+              </button>
+
+              {showOptions && (
+                <div className="border-t border-slate-100 p-5">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <p className="mb-2 text-sm font-black">Vehículo</p>
+                      {vehicles.length > 0 ? (
+                        <select
+                          value={selectedVehicleId}
+                          onChange={(event) => selectVehicle(event.target.value)}
+                          className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                        >
+                          <option value="">Sin vehículo concreto</option>
+                          {vehicles.map((vehicle) => (
+                            <option key={vehicle.id} value={vehicle.id}>
+                              {vehicle.name} · {vehicle.tankLiters} L · {vehicle.consumption} L/100 km
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <Link
+                          href="/mis-vehiculos"
+                          className="block rounded-2xl bg-purple-50 px-4 py-3 text-sm font-black text-purple-700 hover:bg-purple-100"
+                        >
+                          Añadir vehículo
+                        </Link>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-sm font-black">Ordenar por</p>
                       <select
-                        value={selectedVehicleId}
-                        onChange={(event) => selectVehicle(event.target.value)}
+                        value={sortBy}
+                        onChange={(event) => setSortBy(event.target.value as "price" | "distance" | "balanced")}
                         className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
                       >
-                        <option value="">Sin vehículo concreto</option>
-                        {vehicles.map((vehicle) => (
-                          <option key={vehicle.id} value={vehicle.id}>
-                            {vehicle.name} · {vehicle.tankLiters} L · {vehicle.consumption} L/100 km
-                          </option>
-                        ))}
+                        <option value="balanced">Equilibrio precio/desvío</option>
+                        <option value="price">Más barata</option>
+                        <option value="distance">Menor desvío</option>
                       </select>
-                    ) : (
-                      <Link
-                        href="/mis-vehiculos"
-                        className="block rounded-2xl bg-purple-50 px-4 py-3 text-sm font-black text-purple-700 hover:bg-purple-100"
-                      >
-                        Añadir vehículo
-                      </Link>
-                    )}
+                    </div>
                   </div>
 
-                  <div>
-                    <p className="mb-2 text-sm font-black">Ordenar por</p>
-                    <select
-                      value={sortBy}
-                      onChange={(event) => setSortBy(event.target.value as "price" | "distance" | "balanced")}
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                    >
-                      <option value="balanced">Equilibrio precio/desvío</option>
-                      <option value="price">Más barata</option>
-                      <option value="distance">Menor desvío</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="mb-2 text-sm font-black">Combustible</p>
-                  <div className="flex flex-wrap gap-2">
-                    {fuelOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => setFuel(option.value)}
-                        className={
-                          fuel === option.value
-                            ? "rounded-full bg-blue-600 px-4 py-2 text-sm font-black text-white"
-                            : "rounded-full bg-blue-50 px-4 py-2 text-sm font-black text-blue-700 hover:bg-blue-100"
-                        }
-                      >
-                        {option.label}
-                      </button>
-                    ))}
+                  <div className="mt-4">
+                    <p className="mb-2 text-sm font-black">Combustible</p>
+                    <div className="flex flex-wrap gap-2">
+                      {fuelOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => setFuel(option.value)}
+                          className={
+                            fuel === option.value
+                              ? "rounded-full bg-blue-600 px-4 py-2 text-sm font-black text-white"
+                              : "rounded-full bg-blue-50 px-4 py-2 text-sm font-black text-blue-700 hover:bg-blue-100"
+                          }
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </AccordionCard>
-
-            <button
-              onClick={planTrip}
-              disabled={loading}
-              className="w-full rounded-[1.5rem] bg-emerald-600 px-5 py-4 text-lg font-black text-white shadow-lg hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? "Analizando ruta..." : "Analizar viaje"}
-            </button>
-          </div>
+              )}
+            </div>
+          </section>
 
           <section className="self-start rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm xl:sticky xl:top-24">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -805,7 +747,7 @@ export default function TripPlannerPage() {
                 <p className="text-sm font-black text-slate-500">Resultado</p>
                 <h2 className="text-2xl font-black">Gasolineras recomendadas</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Precio, desvío y ruta en Google Maps.
+                  Aparece aquí al analizar, sin bajar al final.
                 </p>
               </div>
 
@@ -823,8 +765,7 @@ export default function TripPlannerPage() {
 
             {!result && (
               <div className="mt-5 rounded-3xl bg-slate-50 p-7 text-center text-slate-500">
-                Completa la ruta y pulsa “Analizar viaje”. Los resultados aparecerán aquí,
-                sin tener que bajar al final de la página.
+                Completa origen, destino y paradas. Después pulsa “Analizar”.
               </div>
             )}
 
@@ -849,12 +790,8 @@ export default function TripPlannerPage() {
 
                 {firstRecommendedStation && (
                   <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4">
-                    <p className="text-xs font-black uppercase text-emerald-700">
-                      Mejor recomendación del viaje
-                    </p>
-                    <h3 className="mt-1 text-lg font-black">
-                      {firstRecommendedStation.name || "Gasolinera"}
-                    </h3>
+                    <p className="text-xs font-black uppercase text-emerald-700">Mejor recomendación</p>
+                    <h3 className="mt-1 text-lg font-black">{firstRecommendedStation.name || "Gasolinera"}</h3>
                     <p className="text-sm font-bold text-emerald-900">
                       {Number(firstRecommendedStation.price).toFixed(3)} €/L · desvío{" "}
                       {formatDetour(firstRecommendedStation.detourMeters)}
@@ -866,12 +803,10 @@ export default function TripPlannerPage() {
                   {result.stops.map((stop, index) => (
                     <article key={stop.id} className="rounded-[1.4rem] border border-slate-200 p-4">
                       <div>
-                        <p className="text-sm font-black text-emerald-600">
-                          Parada {index + 1}
-                        </p>
+                        <p className="text-sm font-black text-emerald-600">Parada {index + 1}</p>
                         <h3 className="text-lg font-black">{stop.label}</h3>
                         <p className="mt-1 text-xs font-bold text-slate-500">
-                          Gasolineras a máximo {stop.radiusKm} km de ese punto.
+                          Gasolineras a máximo {stop.radiusKm} km.
                         </p>
                       </div>
 

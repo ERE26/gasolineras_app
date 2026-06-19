@@ -758,8 +758,8 @@ export default function SearchPage() {
     <main className="min-h-screen bg-[#f7f9fc] text-slate-950">
       <TopNav />
 
-      <section className="mx-auto max-w-7xl px-4 py-4">
-        <div className="relative z-[1200] mb-4 grid items-start gap-4 xl:grid-cols-[1.35fr_.65fr]">
+      <section className="mx-auto max-w-7xl px-4 py-6">
+        <div className="mb-4 grid items-start gap-4 xl:grid-cols-[1.35fr_.65fr]">
           <div className="rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -786,7 +786,7 @@ export default function SearchPage() {
               />
 
               {searchAddress.trim().length >= 3 && addressSuggestions.length > 0 && (
-                <div className="absolute left-0 right-0 top-[54px] z-[2800] max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                <div className="absolute left-0 right-0 top-[54px] z-50 max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
                   {addressSuggestions.map((suggestion) => (
                     <button
                       key={`${suggestion.lat}-${suggestion.lon}-${suggestion.label}`}
@@ -849,7 +849,7 @@ export default function SearchPage() {
           </div>
         </div>
 
-        <div className="relative z-[1100] mb-4 rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="relative mb-4 rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
           <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
             <div className="relative">
               <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Marcas</p>
@@ -863,7 +863,7 @@ export default function SearchPage() {
               </button>
 
               {brandMenuOpen && (
-                <div className="absolute left-0 right-0 top-[76px] z-[2800] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                <div className="absolute left-0 right-0 top-[76px] z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
                   {brandOptions.map((brandOption) => {
                     const selected = selectedBrands.includes(brandOption);
 
@@ -912,7 +912,7 @@ export default function SearchPage() {
               </button>
 
               {favoriteMenuOpen && favoriteStationsFull.length > 0 && (
-                <div className="absolute left-0 right-0 top-[76px] z-[2800] max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                <div className="absolute left-0 right-0 top-[76px] z-50 max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
                   {favoriteStationsFull.map((favorite) => (
                     <button
                       key={favorite.id}
@@ -948,7 +948,7 @@ export default function SearchPage() {
               </button>
 
               {vehicleMenuOpen && (
-                <div className="absolute left-0 right-0 top-[76px] z-[2800] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                <div className="absolute left-0 right-0 top-[76px] z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
                   {vehicles.length > 0 ? (
                     vehicles.map((vehicle) => (
                       <button
@@ -1010,7 +1010,7 @@ export default function SearchPage() {
                 </button>
 
                 {otherFuelMenuOpen && (
-                  <div className="absolute left-0 right-0 top-[76px] z-[2800] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                  <div className="absolute left-0 right-0 top-[76px] z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
                     {fuelOptions.slice(4).map((option) => (
                       <button
                         key={option.value}
@@ -1071,7 +1071,7 @@ export default function SearchPage() {
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(390px,.95fr)]">
           <section className="space-y-4 xl:order-2">
-            <div className="h-[520px] overflow-hidden rounded-[1.8rem] border border-slate-200 bg-white shadow-sm xl:sticky xl:top-[90px]">
+            <div className="h-[520px] overflow-hidden rounded-[1.8rem] border border-slate-200 bg-white shadow-sm">
               <GasMap stations={stations} userLocation={userLocation} />
             </div>
           </section>
