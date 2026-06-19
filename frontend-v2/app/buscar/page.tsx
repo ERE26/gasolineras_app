@@ -609,7 +609,29 @@ export default function SearchPage() {
   }
 
   async function loadManualRanking() {
-    if (!province.trim() && !municipality.trim() && selectedBrands.length === 0) {
+    const hasAreaFilter = Boolean(province.trim() || municipality.trim());
+
+    // Si el usuario ya había buscado por ubicación o por una dirección concreta,
+    // aplicar filtros debe mantener esa misma ubicación como referencia.
+    // Solo saltamos a ranking por zona cuando se escribe provincia o municipio.
+    if (!hasAreaFilter) {
+      if (userLocation) {
+        await runSmartNearby(
+          userLocation.lat,
+          userLocation.lon,
+          areaInfo?.label || "ubicación actual",
+          fuel,
+          areaInfo
+            ? {
+                label: areaInfo.label,
+                municipality: areaInfo.municipality,
+                isMajorCity: areaInfo.isMajorCity,
+              }
+            : undefined
+        );
+        return;
+      }
+
       await loadNearby(fuel);
       return;
     }
@@ -803,27 +825,6 @@ export default function SearchPage() {
                 </div>
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-2">
-                <button
-                  onClick={() => {
-                    setFuel("gasolina95");
-                    loadNearby("gasolina95");
-                  }}
-                  className="rounded-2xl bg-slate-950 px-4 py-3 text-left text-sm font-black text-white shadow-sm hover:bg-slate-800"
-                >
-                  Gasolina 95 cerca
-                </button>
-
-                <button
-                  onClick={() => {
-                    setFuel("diesel");
-                    loadNearby("diesel");
-                  }}
-                  className="rounded-2xl bg-blue-600 px-4 py-3 text-left text-sm font-black text-white shadow-sm hover:bg-blue-500"
-                >
-                  Diésel cerca
-                </button>
-              </div>
             </div>
           </div>
 
