@@ -22,7 +22,7 @@ type Station = {
   longitude: number;
   price: string;
   fuel_type: string;
-  captured_at: string;
+  captured_at?: string;
   distance_meters?: number;
   schedule?: string;
 };
