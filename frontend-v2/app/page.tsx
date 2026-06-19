@@ -145,7 +145,7 @@ export default function Home() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,#bbf7d0,transparent_34%),radial-gradient(circle_at_top_right,#bfdbfe,transparent_38%),linear-gradient(135deg,#ffffff,#f8fafc)]" />
 
-        <div className="relative mx-auto grid max-w-7xl gap-8 px-6 py-10 lg:grid-cols-[1.05fr_.95fr] lg:py-14">
+        <div className="relative mx-auto grid max-w-7xl items-start gap-8 px-6 py-10 lg:grid-cols-[1.05fr_.95fr] lg:py-14">
           <div>
             <div className="mb-4 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-700">
               ⛽ Datos oficiales · 📍 ubicación en tiempo real
@@ -193,7 +193,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl">
+          <div className="self-start rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl">
             <p className="text-sm font-black text-blue-600">Cómo usarla</p>
             <h2 className="mt-1 text-2xl font-black">Tu decisión de repostaje en 3 pasos</h2>
 

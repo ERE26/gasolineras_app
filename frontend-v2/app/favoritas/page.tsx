@@ -24,11 +24,27 @@ type AddressSuggestion = {
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const popularBrands = ["REPSOL", "MOEVE", "CEPSA", "GALP", "BP", "SHELL", "PLENOIL", "BALLENOIL", "PETROPRIX"];
+const mainBrands = ["REPSOL", "MOEVE", "GALP", "BP", "DISA", "SHELL", "BALLENOIL", "PLENERGY"];
+const brandOptions = [...mainBrands, "OTRA"];
 
 function getViewbox(lat: number, lon: number) {
   const delta = 0.35;
   return `${lon - delta},${lat + delta},${lon + delta},${lat - delta}`;
+}
+
+function isMainBrandStation(station: { brand?: string; name?: string }) {
+  const text = `${station.brand || ""} ${station.name || ""}`.toUpperCase();
+  return mainBrands.some((brand) => text.includes(brand));
+}
+
+function filterByBrandSelection<T extends { brand?: string; name?: string }>(items: T[], brand: string) {
+  if (!brand.trim()) return items;
+  if (brand.toUpperCase() === "OTRA") {
+    return items.filter((item) => !isMainBrandStation(item));
+  }
+
+  const selected = brand.toUpperCase();
+  return items.filter((item) => `${item.brand || ""} ${item.name || ""}`.toUpperCase().includes(selected));
 }
 
 export default function FavoritesPage() {
@@ -36,7 +52,8 @@ export default function FavoritesPage() {
   const [results, setResults] = useState<FavoriteStation[]>([]);
 
   const [brand, setBrand] = useState("");
-  const [brandSuggestions, setBrandSuggestions] = useState<string[]>(popularBrands);
+  const [brandSuggestions, setBrandSuggestions] = useState<string[]>(brandOptions);
+  const [brandOpen, setBrandOpen] = useState(false);
 
   const [address, setAddress] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
@@ -118,20 +135,16 @@ export default function FavoritesPage() {
   }
 
   async function loadBrands(search: string) {
-    try {
-      const response = await fetch(
-        `${API_URL}/api/brands?search=${encodeURIComponent(search)}&limit=12`
-      );
-      const data = await response.json();
-      const merged = Array.from(new Set([...popularBrands, ...(Array.isArray(data) ? data : [])]));
-      setBrandSuggestions(merged);
-    } catch {
-      setBrandSuggestions(popularBrands);
-    }
+    setBrandSuggestions(brandOptions);
   }
 
   async function loadAddressSuggestions(query: string) {
     if (!query.trim() || query.trim().length < 3) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    if (selectedAddress && selectedAddress.label === query) {
       setAddressSuggestions([]);
       return;
     }
@@ -192,19 +205,19 @@ export default function FavoritesPage() {
         params.set("lat", String(lat));
         params.set("lon", String(lon));
         params.set("radius", String(10000));
-        if (brand.trim()) params.set("brand", brand.trim());
+        if (brand.trim() && brand.toUpperCase() !== "OTRA") params.set("brand", brand.trim());
 
         const response = await fetch(`${API_URL}/api/nearby?${params.toString()}`);
         const data = await response.json();
-        setResults(Array.isArray(data) ? data : []);
+        setResults(filterByBrandSelection(Array.isArray(data) ? data : [], brand).slice(0, 20));
         return;
       }
 
-      if (brand.trim()) params.set("brand", brand.trim());
+      if (brand.trim() && brand.toUpperCase() !== "OTRA") params.set("brand", brand.trim());
 
       const response = await fetch(`${API_URL}/api/ranking?${params.toString()}`);
       const data = await response.json();
-      setResults(Array.isArray(data) ? data : []);
+      setResults(filterByBrandSelection(Array.isArray(data) ? data : [], brand).slice(0, 20));
     } catch {
       alert("No he podido buscar gasolineras para añadir.");
     }
@@ -330,6 +343,7 @@ export default function FavoritesPage() {
                       {addressSuggestions.map((suggestion) => (
                         <button
                           key={`${suggestion.lat}-${suggestion.lon}-${suggestion.label}`}
+                          onMouseDown={(event) => event.preventDefault()}
                           onClick={() => {
                             setSelectedAddress(suggestion);
                             setAddress(suggestion.label);
@@ -348,20 +362,28 @@ export default function FavoritesPage() {
                   <label className="mb-2 block text-sm font-black">Marca</label>
                   <input
                     value={brand}
-                    onChange={(event) => setBrand(event.target.value)}
-                    placeholder="Ej: Repsol, Moeve, Galp..."
+                    onFocus={() => setBrandOpen(true)}
+                    onChange={(event) => {
+                      setBrand(event.target.value);
+                      setBrandOpen(true);
+                    }}
+                    placeholder="Repsol, Moeve, Galp, BP, Disa..."
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
                   />
 
-                  {brand.trim() && brandSuggestions.length > 0 && (
+                  {brandOpen && brand.trim() && brandOptions.length > 0 && (
                     <div className="absolute left-0 right-0 top-[76px] z-[2500] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-                      {brandSuggestions
+                      {brandOptions
                         .filter((item) => item.toLowerCase().includes(brand.toLowerCase()))
                         .slice(0, 8)
                         .map((item) => (
                           <button
                             key={item}
-                            onClick={() => setBrand(item)}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              setBrand(item);
+                              setBrandOpen(false);
+                            }}
                             className="block w-full px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-blue-50"
                           >
                             {item}

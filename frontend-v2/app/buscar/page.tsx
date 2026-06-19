@@ -67,7 +67,36 @@ const fuelOptions = [
   { value: "hidrogeno", label: "Hidrógeno" },
 ];
 
-const popularBrands = ["REPSOL", "MOEVE", "CEPSA", "GALP", "BP", "SHELL", "PLENOIL", "BALLENOIL", "PETROPRIX"];
+const mainBrands = ["REPSOL", "MOEVE", "GALP", "BP", "DISA", "SHELL", "BALLENOIL", "PLENERGY"];
+const brandOptions = [...mainBrands, "OTRA"];
+
+function isMainBrandStation(station: { brand?: string; name?: string }) {
+  const text = `${station.brand || ""} ${station.name || ""}`.toUpperCase();
+  return mainBrands.some((brand) => text.includes(brand));
+}
+
+function filterByBrandSelection<T extends { brand?: string; name?: string }>(items: T[], brand: string) {
+  if (!brand.trim()) return items;
+  if (brand.toUpperCase() === "OTRA") {
+    return items.filter((item) => !isMainBrandStation(item));
+  }
+
+  const selected = brand.toUpperCase();
+  return items.filter((item) => `${item.brand || ""} ${item.name || ""}`.toUpperCase().includes(selected));
+}
+
+type FavoriteStation = Station | {
+  id: number | string;
+  name: string;
+  brand?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  price?: string;
+  fuel_type?: string;
+  municipality?: string;
+  province?: string;
+};
 
 const majorCities = [
   "madrid", "barcelona", "valencia", "sevilla", "zaragoza", "malaga", "málaga",
@@ -131,11 +160,12 @@ export default function SearchPage() {
 
   const [provinces, setProvinces] = useState<string[]>([]);
   const [municipalities, setMunicipalities] = useState<string[]>([]);
-  const [brandSuggestions, setBrandSuggestions] = useState<string[]>(popularBrands);
+  const [brandSuggestions, setBrandSuggestions] = useState<string[]>(brandOptions);
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
-  const [favoriteStationIds, setFavoriteStationIds] = useState<number[]>([]);
+  const [favoriteStationIds, setFavoriteStationIds] = useState<Array<number | string>>([]);
+  const [favoriteStationsFull, setFavoriteStationsFull] = useState<FavoriteStation[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
@@ -194,21 +224,16 @@ export default function SearchPage() {
   }
 
   async function loadBrands(search: string) {
-    try {
-      const response = await fetch(
-        `${API_URL}/api/brands?search=${encodeURIComponent(search)}&limit=12`
-      );
-      const data = await response.json();
-      const merged = Array.from(new Set([...popularBrands, ...(Array.isArray(data) ? data : [])]));
-      setBrandSuggestions(merged);
-    } catch (error) {
-      console.error("Error cargando marcas:", error);
-      setBrandSuggestions(popularBrands);
-    }
+    setBrandSuggestions(brandOptions);
   }
 
   async function loadAddressSuggestions(query: string) {
     if (!query.trim() || query.trim().length < 3) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    if (selectedAddress && selectedAddress.label === query) {
       setAddressSuggestions([]);
       return;
     }
@@ -260,24 +285,61 @@ export default function SearchPage() {
   }
 
   function loadFavoritesFromStorage() {
+    const savedFull = localStorage.getItem("favoriteStationsFull");
+    if (savedFull) {
+      try {
+        const parsed: FavoriteStation[] = JSON.parse(savedFull);
+        setFavoriteStationsFull(parsed);
+        setFavoriteStationIds(parsed.map((item) => item.id));
+        return;
+      } catch {}
+    }
+
     const saved = localStorage.getItem("favoriteStations");
     if (!saved) return;
-    setFavoriteStationIds(JSON.parse(saved));
+
+    try {
+      const ids = JSON.parse(saved);
+      setFavoriteStationIds(ids);
+    } catch {}
   }
 
-  function saveFavorites(nextFavorites: number[]) {
-    setFavoriteStationIds(nextFavorites);
-    localStorage.setItem("favoriteStations", JSON.stringify(nextFavorites));
+  function saveFavorites(nextFavorites: FavoriteStation[]) {
+    setFavoriteStationsFull(nextFavorites);
+    setFavoriteStationIds(nextFavorites.map((item) => item.id));
+    localStorage.setItem("favoriteStationsFull", JSON.stringify(nextFavorites));
+    localStorage.setItem("favoriteStations", JSON.stringify(nextFavorites.map((item) => item.id)));
   }
 
-  function toggleFavoriteStation(stationId: number) {
-    const exists = favoriteStationIds.includes(stationId);
+  function toggleFavoriteStation(station: Station) {
+    const exists = favoriteStationIds.some((id) => String(id) === String(station.id));
 
-    const nextFavorites = exists
-      ? favoriteStationIds.filter((id) => id !== stationId)
-      : [...favoriteStationIds, stationId];
+    if (exists) {
+      saveFavorites(favoriteStationsFull.filter((item) => String(item.id) !== String(station.id)));
+      return;
+    }
 
-    saveFavorites(nextFavorites);
+    saveFavorites([...favoriteStationsFull, { ...station }]);
+  }
+
+  async function searchFavorite(favorite: FavoriteStation) {
+    if ("latitude" in favorite && favorite.latitude && favorite.longitude) {
+      await runSmartNearby(
+        favorite.latitude,
+        favorite.longitude,
+        favorite.name,
+        fuel,
+        {
+          label: favorite.name,
+          municipality: favorite.municipality || favorite.name,
+          isMajorCity: false,
+        }
+      );
+      return;
+    }
+
+    if (favorite.brand) setBrand(favorite.brand);
+    if (favorite.address) setSearchAddress(favorite.address);
   }
 
   function selectVehicle(vehicleId: string) {
@@ -294,15 +356,18 @@ export default function SearchPage() {
       lon: String(lon),
       fuel: selectedFuel,
       radius: String(radiusKm * 1000),
-      limit: "25",
+      limit: brand.toUpperCase() === "OTRA" ? "80" : "25",
     });
 
-    if (brand.trim()) params.append("brand", brand.trim());
+    if (brand.trim() && brand.toUpperCase() !== "OTRA") {
+      params.append("brand", brand.trim());
+    }
 
     const response = await fetch(`${API_URL}/api/nearby?${params.toString()}`);
     const data = await response.json();
 
-    return Array.isArray(data) ? data : [];
+    const result = Array.isArray(data) ? data : [];
+    return filterByBrandSelection(result, brand).slice(0, 25);
   }
 
   async function loadReferenceForMunicipality(areaName: string, selectedFuel = fuel) {
@@ -416,6 +481,9 @@ export default function SearchPage() {
 
     if (addressSuggestions.length > 0) {
       const first = addressSuggestions[0];
+      setSelectedAddress(first);
+      setSearchAddress(first.label);
+      setAddressSuggestions([]);
       await runSmartNearby(first.lat, first.lon, first.label, fuel, first.area);
       return;
     }
@@ -466,11 +534,11 @@ export default function SearchPage() {
 
       if (province.trim()) params.append("province", province.trim());
       if (municipality.trim()) params.append("municipality", municipality.trim());
-      if (brand.trim()) params.append("brand", brand.trim());
+      if (brand.trim() && brand.toUpperCase() !== "OTRA") params.append("brand", brand.trim());
 
       const response = await fetch(`${API_URL}/api/ranking?${params.toString()}`);
       const data = await response.json();
-      const nextStations = Array.isArray(data) ? data : [];
+      const nextStations = filterByBrandSelection(Array.isArray(data) ? data : [], brand).slice(0, 25);
 
       setStations(nextStations);
       setAreaInfo(null);
@@ -525,12 +593,16 @@ export default function SearchPage() {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      setSelectedAddress(null);
+      if (selectedAddress && selectedAddress.label === searchAddress) {
+        setAddressSuggestions([]);
+        return;
+      }
+
       loadAddressSuggestions(searchAddress);
     }, 350);
 
     return () => clearTimeout(timeout);
-  }, [searchAddress, userLocation]);
+  }, [searchAddress, userLocation, selectedAddress]);
 
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === selectedVehicleId);
 
@@ -570,6 +642,7 @@ export default function SearchPage() {
                     {addressSuggestions.map((suggestion) => (
                       <button
                         key={`${suggestion.lat}-${suggestion.lon}-${suggestion.label}`}
+                        onMouseDown={(event) => event.preventDefault()}
                         onClick={() => {
                           setSelectedAddress(suggestion);
                           setSearchAddress(suggestion.label);
@@ -693,13 +766,32 @@ export default function SearchPage() {
                   </div>
                 )}
 
+                {favoriteStationsFull.length > 0 && (
+                  <div>
+                    <p className="mb-2 text-sm font-black text-slate-800">
+                      Favoritas
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {favoriteStationsFull.slice(0, 8).map((favorite) => (
+                        <button
+                          key={favorite.id}
+                          onClick={() => searchFavorite(favorite)}
+                          className="rounded-full bg-yellow-50 px-3 py-2 text-xs font-black text-yellow-800 hover:bg-yellow-100"
+                        >
+                          {favorite.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <AutocompleteInput
                   label="Marca"
                   value={brand}
                   onChange={setBrand}
                   onSelect={setBrand}
-                  placeholder="Ej: Repsol, Moeve, Galp, BP..."
-                  suggestions={brandSuggestions}
+                  placeholder="Repsol, Moeve, Galp, BP, Disa..."
+                  suggestions={brandOptions}
                 />
 
                 <AutocompleteInput
@@ -758,7 +850,7 @@ export default function SearchPage() {
                     index={index}
                     averagePrice={visibleAveragePrice}
                     selectedVehicle={selectedVehicle}
-                    isFavorite={favoriteStationIds.includes(station.id)}
+                    isFavorite={favoriteStationIds.some((id) => String(id) === String(station.id))}
                     onToggleFavorite={toggleFavoriteStation}
                   />
                 ))}
