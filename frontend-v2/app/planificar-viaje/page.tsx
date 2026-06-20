@@ -111,30 +111,30 @@ const stopModes: Array<{
 }> = [
   {
     value: "hours-from-start",
-    label: "A X horas de salir",
-    helper: "Ej: 2 = buscar gasolineras cuando lleves unas 2 horas conduciendo.",
+    label: "Después de X horas",
+    helper: "Ej: 2 = buscar una parada cuando lleves unas 2 horas conduciendo.",
     placeholder: "2",
     examples: ["1,5", "2", "2,5", "3"],
   },
   {
     value: "km-before-destination",
-    label: "A X km de llegar",
-    helper: "Ej: 80 = buscar gasolineras unos 80 km antes del destino.",
+    label: "A X km del destino",
+    helper: "Ej: 80 = buscar una parada aproximadamente 80 km antes de llegar.",
     placeholder: "80",
     examples: ["30", "50", "80", "100"],
   },
   {
     value: "km-from-start",
-    label: "A X km de haber salido",
-    helper: "Ej: 250 = buscar gasolineras a los 250 km desde el origen.",
+    label: "A X km del inicio",
+    helper: "Ej: 250 = buscar una parada a los 250 km desde donde sales.",
     placeholder: "250",
     examples: ["100", "200", "300", "400"],
   },
   {
     value: "near-place",
-    label: "En una dirección concreta",
-    helper: "Escribe una dirección, ciudad o zona y elige una sugerencia.",
-    placeholder: "Ej: Calle Mayor 10, Zaragoza",
+    label: "En una zona concreta",
+    helper: "Escribe una ciudad, zona o dirección concreta y elige una sugerencia.",
+    placeholder: "Ej: Tarancón, Albacete o Calle Mayor 10"
     examples: ["Zaragoza", "Tarancón", "Albacete", "Burgos"],
   },
 ];
@@ -491,13 +491,7 @@ export default function TripPlannerPage() {
                   <h2 className="text-2xl font-black">Ruta</h2>
                 </div>
 
-                <button
-                  onClick={planTrip}
-                  disabled={loading}
-                  className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loading ? "Analizando..." : "Analizar"}
-                </button>
+
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
@@ -603,7 +597,7 @@ export default function TripPlannerPage() {
                         <div className="grid gap-3 md:grid-cols-[.9fr_1.1fr]">
                           <div>
                             <label className="mb-2 block text-xs font-black uppercase text-slate-500">
-                              Tipo de parada
+                              Cómo quieres parar
                             </label>
                             <select
                               value={stop.mode}
@@ -743,6 +737,18 @@ export default function TripPlannerPage() {
                   </div>
                 </div>
               )}
+              <div className="pt-2">
+                <button
+                  onClick={planTrip}
+                  disabled={loading}
+                  className="w-full rounded-3xl bg-blue-600 px-5 py-4 text-base font-black text-white shadow-sm shadow-blue-100 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? "Analizando viaje..." : "Analizar viaje"}
+                </button>
+                <p className="mt-2 text-center text-xs font-semibold text-slate-500">
+                  Calcularemos el trayecto y las paradas recomendadas sin que tengas que volver arriba.
+                </p>
+              </div>
             </div>
           </section>
 
@@ -750,9 +756,9 @@ export default function TripPlannerPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-sm font-black text-slate-500">Resultado</p>
-                <h2 className="text-2xl font-black">Mejor parada para repostar</h2>
+                <h2 className="text-2xl font-black">Así quedaría tu viaje</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Verás precio, desvío y acceso directo a Google Maps.
+                  Primero verás el resumen del trayecto. Debajo aparecerán las mejores paradas para repostar.
                 </p>
               </div>
 
@@ -770,7 +776,7 @@ export default function TripPlannerPage() {
 
             {!result && (
               <div className="mt-5 rounded-3xl bg-slate-50 p-7 text-center text-slate-500">
-                Completa la ruta y pulsa “Analizar”. Aquí aparecerán las mejores gasolineras para tu parada.
+                Completa la ruta y pulsa “Analizar viaje”. Aquí verás cómo quedaría el trayecto y las paradas recomendadas.
               </div>
             )}
 
@@ -795,7 +801,7 @@ export default function TripPlannerPage() {
 
                 {firstRecommendedStation && (
                   <div className="rounded-3xl border border-blue-200 bg-blue-50 p-4">
-                    <p className="text-xs font-black uppercase text-blue-700">Mejor recomendación</p>
+                    <p className="text-xs font-black uppercase text-blue-700">Mejor opción global</p>
                     <h3 className="mt-1 text-lg font-black">{firstRecommendedStation.name || "Gasolinera"}</h3>
                     <p className="text-sm font-bold text-blue-900">
                       {Number(firstRecommendedStation.price).toFixed(3)} €/L · desvío{" "}
@@ -803,6 +809,13 @@ export default function TripPlannerPage() {
                     </p>
                   </div>
                 )}
+
+                <div className="pt-2">
+                  <h3 className="text-lg font-black">Mejores paradas para repostar</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Estas son las estaciones recomendadas para cada parada que has configurado.
+                  </p>
+                </div>
 
                 <div className="max-h-[68vh] space-y-4 overflow-auto pr-1">
                   {result.stops.map((stop, index) => (
