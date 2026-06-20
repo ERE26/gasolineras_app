@@ -79,9 +79,6 @@ const fuelOptions = [
   { value: "glp", label: "GLP" },
 ];
 
-const mainBrands = ["REPSOL", "MOEVE", "GALP", "BP", "DISA", "SHELL", "BALLENOIL", "PLENERGY"];
-const brandOptions = [...mainBrands, "OTRA"];
-
 const quickDestinations = [
   "Madrid",
   "Barcelona",
@@ -113,32 +110,32 @@ const stopModes: Array<{
   examples: string[];
 }> = [
   {
-    value: "near-place",
-    label: "Cerca de una ciudad",
-    helper: "Ej: Zaragoza, Albacete, Burgos.",
-    placeholder: "Zaragoza",
-    examples: ["Zaragoza", "Albacete", "Burgos", "Lleida", "Córdoba"],
-  },
-  {
-    value: "km-before-destination",
-    label: "Km antes del destino",
-    helper: "Ej: 50 = buscar 50 km antes de llegar.",
-    placeholder: "50",
-    examples: ["30", "50", "80", "100"],
-  },
-  {
     value: "hours-from-start",
-    label: "Tras X horas de viaje",
-    helper: "Ej: 2,5 = parar tras dos horas y media.",
+    label: "A X horas de salir",
+    helper: "Ej: 2 = buscar gasolineras cuando lleves unas 2 horas conduciendo.",
     placeholder: "2",
     examples: ["1,5", "2", "2,5", "3"],
   },
   {
+    value: "km-before-destination",
+    label: "A X km de llegar",
+    helper: "Ej: 80 = buscar gasolineras unos 80 km antes del destino.",
+    placeholder: "80",
+    examples: ["30", "50", "80", "100"],
+  },
+  {
     value: "km-from-start",
-    label: "Tras X km desde origen",
-    helper: "Ej: 250 = buscar a los 250 km de ruta.",
+    label: "A X km de haber salido",
+    helper: "Ej: 250 = buscar gasolineras a los 250 km desde el origen.",
     placeholder: "250",
     examples: ["100", "200", "300", "400"],
+  },
+  {
+    value: "near-place",
+    label: "En una dirección concreta",
+    helper: "Escribe una dirección, ciudad o zona y elige una sugerencia.",
+    placeholder: "Ej: Calle Mayor 10, Zaragoza",
+    examples: ["Zaragoza", "Albacete", "Burgos", "Lleida", "Córdoba"],
   },
 ];
 
@@ -296,7 +293,7 @@ function AddressSuggestInput({
 }
 
 export default function TripPlannerPage() {
-  const [originMode, setOriginMode] = useState<"current" | "address" | "none">("none");
+  const [originMode, setOriginMode] = useState<"current" | "address">("current");
   const [originAddress, setOriginAddress] = useState("");
   const [originLocation, setOriginLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [destination, setDestination] = useState("");
@@ -309,19 +306,6 @@ export default function TripPlannerPage() {
   const [loading, setLoading] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [showAllStops, setShowAllStops] = useState(true);
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [brandMenuOpen, setBrandMenuOpen] = useState(false);
-
-  function toggleBrandSelection(brand: string) {
-    setSelectedBrands((current) =>
-      current.includes(brand) ? current.filter((item) => item !== brand) : [...current, brand]
-    );
-  }
-
-  function clearBrandSelection() {
-    setSelectedBrands([]);
-    setBrandMenuOpen(false);
-  }
 
   useEffect(() => {
     const saved = localStorage.getItem("myVehicles");
@@ -340,6 +324,22 @@ export default function TripPlannerPage() {
     [vehicles, selectedVehicleId]
   );
 
+  async function labelCurrentLocation(lat: number, lon: number) {
+    try {
+      const params = new URLSearchParams({
+        lat: String(lat),
+        lon: String(lon),
+      });
+
+      const response = await fetch(`/api/reverse-geocode?${params.toString()}`);
+      const data = await response.json();
+
+      return data.shortLabel || data.label || "Mi ubicación actual";
+    } catch {
+      return "Mi ubicación actual";
+    }
+  }
+
   function useCurrentLocation() {
     if (!navigator.geolocation) {
       alert("Tu navegador no permite usar ubicación.");
@@ -347,7 +347,7 @@ export default function TripPlannerPage() {
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const nextLocation = {
           lat: position.coords.latitude,
           lon: position.coords.longitude,
@@ -355,7 +355,9 @@ export default function TripPlannerPage() {
 
         setOriginMode("current");
         setOriginLocation(nextLocation);
-        setOriginAddress(`Mi ubicación actual (${nextLocation.lat.toFixed(4)}, ${nextLocation.lon.toFixed(4)})`);
+
+        const locationLabel = await labelCurrentLocation(nextLocation.lat, nextLocation.lon);
+        setOriginAddress(locationLabel);
       },
       () => {
         alert("No he podido obtener tu ubicación. Puedes escribir el origen manualmente.");
@@ -376,7 +378,7 @@ export default function TripPlannerPage() {
     const defaults: StopForm[] = [
       { mode: "hours-from-start", value: "2" },
       { mode: "km-before-destination", value: "80" },
-      { mode: "km-from-start", value: "200" },
+      { mode: "km-from-start", value: "250" },
       { mode: "near-place", value: "" },
     ];
 
@@ -413,13 +415,8 @@ export default function TripPlannerPage() {
   }
 
   async function planTrip() {
-    if (originMode === "none") {
-      alert("Elige si quieres usar tu ubicación o escribir el origen.");
-      return;
-    }
-
     if (originMode === "current" && !originLocation) {
-      alert("Pulsa primero “Mi ubicación” para activarla.");
+      alert("Pulsa primero “Usar mi ubicación” o escribe un origen.");
       return;
     }
 
@@ -459,7 +456,6 @@ export default function TripPlannerPage() {
           sortBy,
           maxDetourKm: 5,
           vehicle: selectedVehicle,
-          selectedBrands,
           stops: stops.map((stop, index) => ({
             label: `Parada ${index + 1}`,
             mode: stop.mode,
@@ -482,26 +478,27 @@ export default function TripPlannerPage() {
     }
   }
 
+  const firstRecommendedStation = result?.stops?.find((stop) => stop.best)?.best || null;
 
   return (
-    <main className="min-h-screen bg-[#f7f9fc] text-slate-950">
+    <main className="min-h-screen bg-[#f3f6fb] text-slate-950">
       <TopNav />
 
       <section className="mx-auto max-w-7xl px-4 py-6">
         <div className="mb-4 rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm font-black text-emerald-600">Planifica tu viaje</p>
-              <h1 className="text-3xl font-black">Repostaje inteligente en ruta</h1>
+              <p className="text-sm font-black text-blue-600">Planifica tu viaje</p>
+              <h1 className="text-3xl font-black">Planifica dónde repostar</h1>
               <p className="mt-2 max-w-3xl text-sm font-bold leading-6 text-slate-500">
-                Origen, destino, paradas y resultado en una misma pantalla. Desvío máximo aproximado: 5 km.
+                Elige origen, destino y una parada sencilla: por horas, por kilómetros o por una dirección concreta.
               </p>
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-center text-xs font-black">
-              <div className="rounded-2xl bg-emerald-50 px-3 py-2 text-emerald-700">Ruta Google</div>
+              <div className="rounded-2xl bg-emerald-50 px-3 py-2 text-blue-700">Ruta</div>
               <div className="rounded-2xl bg-blue-50 px-3 py-2 text-blue-700">≤ 5 km</div>
-              <div className="rounded-2xl bg-purple-50 px-3 py-2 text-purple-700">Precio/desvío</div>
+              <div className="rounded-2xl bg-purple-50 px-3 py-2 text-purple-700">Ahorro</div>
             </div>
           </div>
         </div>
@@ -515,6 +512,7 @@ export default function TripPlannerPage() {
                   <h2 className="text-2xl font-black">Ruta</h2>
                 </div>
 
+
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
@@ -524,7 +522,7 @@ export default function TripPlannerPage() {
                     <button
                       onClick={useCurrentLocation}
                       className={
-                        originMode === "current" && originLocation
+                        originMode === "current"
                           ? "rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white"
                           : "rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-200"
                       }
@@ -544,25 +542,12 @@ export default function TripPlannerPage() {
                     </button>
                   </div>
 
-                  <div className="mt-2 rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800">
-                    {originMode === "current" && originLocation
-                      ? `Origen activo: ${originAddress || "Mi ubicación actual"}`
-                      : originMode === "address"
-                        ? "Escribe el origen y elige una sugerencia para evitar calles repetidas."
-                        : "Elige si quieres usar tu ubicación o escribir el origen."}
-                  </div>
-
-                  {originMode === "current" && originLocation && (
-                    <div className="mt-3">
-                      <label className="mb-2 block text-xs font-black uppercase text-slate-500">
-                        Origen detectado
-                      </label>
-                      <input
-                        value={originAddress}
-                        readOnly
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-bold text-slate-700 outline-none"
-                      />
-                    </div>
+                  {originMode === "current" && (
+                    <p className="mt-2 rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800">
+                      {originLocation
+                        ? `Origen activo: ${originAddress || "Mi ubicación actual"}`
+                        : "Pulsa “Mi ubicación” para activarla."}
+                    </p>
                   )}
 
                   {originMode === "address" && (
@@ -592,7 +577,7 @@ export default function TripPlannerPage() {
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-black text-slate-500">Paso 2</p>
-                  <h2 className="text-2xl font-black">Paradas</h2>
+                  <h2 className="text-2xl font-black">Paradas de repostaje</h2>
                 </div>
 
                 <div className="flex gap-2">
@@ -605,7 +590,7 @@ export default function TripPlannerPage() {
 
                   <button
                     onClick={addStop}
-                    className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 hover:bg-emerald-100"
+                    className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-black text-blue-700 hover:bg-blue-100"
                   >
                     Añadir
                   </button>
@@ -635,7 +620,7 @@ export default function TripPlannerPage() {
                         <div className="grid gap-3 md:grid-cols-[.9fr_1.1fr]">
                           <div>
                             <label className="mb-2 block text-xs font-black uppercase text-slate-500">
-                              Tipo de parada
+                              Cómo quieres parar
                             </label>
                             <select
                               value={stop.mode}
@@ -651,15 +636,27 @@ export default function TripPlannerPage() {
                           </div>
 
                           <div>
-                            <label className="mb-2 block text-xs font-black uppercase text-slate-500">
-                              Valor
-                            </label>
-                            <input
-                              value={stop.value}
-                              onChange={(event) => updateStop(index, { value: event.target.value })}
-                              placeholder={mode.placeholder}
-                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                            />
+                            {stop.mode === "near-place" ? (
+                              <AddressSuggestInput
+                                label="Dirección concreta"
+                                value={stop.value}
+                                onChange={(value) => updateStop(index, { value })}
+                                placeholder={mode.placeholder}
+                                helper="Elige una sugerencia para evitar direcciones repetidas."
+                              />
+                            ) : (
+                              <>
+                                <label className="mb-2 block text-xs font-black uppercase text-slate-500">
+                                  Valor
+                                </label>
+                                <input
+                                  value={stop.value}
+                                  onChange={(event) => updateStop(index, { value: event.target.value })}
+                                  placeholder={mode.placeholder}
+                                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                                />
+                              </>
+                            )}
                           </div>
                         </div>
 
@@ -743,50 +740,6 @@ export default function TripPlannerPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 relative">
-                    <p className="mb-2 text-sm font-black">Marcas</p>
-                    <button
-                      type="button"
-                      onClick={() => setBrandMenuOpen((open) => !open)}
-                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-black text-slate-800 shadow-sm hover:bg-slate-50"
-                    >
-                      {selectedBrands.length > 0 ? selectedBrands.join(", ") : "Todas las marcas"}
-                    </button>
-
-                    {brandMenuOpen && (
-                      <div className="absolute left-0 right-0 top-[76px] z-30 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-                        {brandOptions.map((brandOption) => {
-                          const selected = selectedBrands.includes(brandOption);
-
-                          return (
-                            <button
-                              key={brandOption}
-                              type="button"
-                              onMouseDown={(event) => event.preventDefault()}
-                              onClick={() => toggleBrandSelection(brandOption)}
-                              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-blue-50"
-                            >
-                              <span>{brandOption}</span>
-                              <span className={selected ? "text-blue-600" : "text-slate-300"}>
-                                {selected ? "✓" : "○"}
-                              </span>
-                            </button>
-                          );
-                        })}
-
-                        {selectedBrands.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={clearBrandSelection}
-                            className="block w-full border-t border-slate-100 px-4 py-3 text-left text-sm font-black text-red-600 hover:bg-red-50"
-                          >
-                            Quitar filtros de marca
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
                   <div className="mt-4">
                     <p className="mb-2 text-sm font-black">Combustible</p>
                     <div className="flex flex-wrap gap-2">
@@ -807,15 +760,19 @@ export default function TripPlannerPage() {
                   </div>
                 </div>
               )}
+              <div className="pt-2">
+                <button
+                  onClick={planTrip}
+                  disabled={loading}
+                  className="w-full rounded-3xl bg-blue-600 px-5 py-4 text-base font-black text-white shadow-sm shadow-blue-100 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? "Analizando viaje..." : "Analizar viaje"}
+                </button>
+                <p className="mt-2 text-center text-xs font-semibold text-slate-500">
+                  Calcularemos el trayecto y las paradas recomendadas sin que tengas que volver arriba.
+                </p>
+              </div>
             </div>
-
-            <button
-              onClick={planTrip}
-              disabled={loading}
-              className="w-full rounded-[1.6rem] bg-emerald-600 px-5 py-4 text-base font-black text-white shadow-sm hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? "Analizando..." : "Analizar viaje"}
-            </button>
           </section>
 
           <section className="self-start rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm xl:sticky xl:top-24">
@@ -842,7 +799,7 @@ export default function TripPlannerPage() {
 
             {!result && (
               <div className="mt-5 rounded-3xl bg-slate-50 p-7 text-center text-slate-500">
-                Completa origen, destino y paradas. Después pulsa “Analizar”.
+                Completa la ruta y pulsa “Analizar viaje”. Aquí verás cómo quedaría el trayecto y las paradas recomendadas.
               </div>
             )}
 
@@ -865,14 +822,32 @@ export default function TripPlannerPage() {
                   </div>
                 </div>
 
+                {firstRecommendedStation && (
+                  <div className="rounded-3xl border border-blue-200 bg-blue-50 p-4">
+                    <p className="text-xs font-black uppercase text-blue-700">Mejor opción global</p>
+                    <h3 className="mt-1 text-lg font-black">{firstRecommendedStation.name || "Gasolinera"}</h3>
+                    <p className="text-sm font-bold text-blue-900">
+                      {Number(firstRecommendedStation.price).toFixed(3)} €/L · desvío{" "}
+                      {formatDetour(firstRecommendedStation.detourMeters)}
+                    </p>
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <h3 className="text-lg font-black">Mejores paradas para repostar</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Estas son las estaciones recomendadas para cada parada que has configurado.
+                  </p>
+                </div>
+
                 <div className="max-h-[68vh] space-y-4 overflow-auto pr-1">
                   {result.stops.map((stop, index) => (
                     <article key={stop.id} className="rounded-[1.4rem] border border-slate-200 p-4">
                       <div>
-                        <p className="text-sm font-black text-emerald-600">Parada {index + 1}</p>
+                        <p className="text-sm font-black text-blue-600">Parada {index + 1}</p>
                         <h3 className="text-lg font-black">{stop.label}</h3>
                         <p className="mt-1 text-xs font-bold text-slate-500">
-                          Gasolineras a máximo {stop.radiusKm} km.
+                          Gasolineras a máximo {stop.radiusKm} km de ese punto.
                         </p>
                       </div>
 
@@ -888,7 +863,7 @@ export default function TripPlannerPage() {
                             key={`${station.id || station.station_id || stationIndex}`}
                             className={
                               stationIndex === 0
-                                ? "rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-3"
+                                ? "rounded-2xl border-2 border-blue-300 bg-blue-50 p-3"
                                 : "rounded-2xl bg-slate-50 p-3"
                             }
                           >

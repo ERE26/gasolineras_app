@@ -28,8 +28,8 @@ export async function GET(request: Request) {
 
   if (!key) {
     return NextResponse.json({
-      label: "Tu ubicación actual",
-      shortLabel: "Tu ubicación actual",
+      label: "Mi ubicación actual",
+      shortLabel: "Mi ubicación actual",
       municipality: "",
       province: "",
     });
@@ -54,8 +54,8 @@ export async function GET(request: Request) {
 
   if (!first) {
     return NextResponse.json({
-      label: "Tu ubicación actual",
-      shortLabel: "Tu ubicación actual",
+      label: "Mi ubicación actual",
+      shortLabel: "Mi ubicación actual",
       municipality: "",
       province: "",
     });
@@ -70,10 +70,10 @@ export async function GET(request: Request) {
 
   const shortLabel =
     locality && province && locality !== province
-      ? `Tu ubicación actual · ${locality}, ${province}`
+      ? `Mi ubicación actual · ${locality}, ${province}`
       : locality
-        ? `Tu ubicación actual · ${locality}`
-        : "Tu ubicación actual";
+        ? `Mi ubicación actual · ${locality}`
+        : first.formatted_address || "Mi ubicación actual";
 
   return NextResponse.json({
     label: first.formatted_address || shortLabel,

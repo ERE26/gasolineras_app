@@ -28,23 +28,6 @@ type Station = {
 
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY || "";
 const BACKEND_API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "";
-const mainBrands = ["REPSOL", "MOEVE", "GALP", "BP", "DISA", "SHELL", "BALLENOIL", "PLENERGY"];
-
-function isMainBrandStation(station: { brand?: string; name?: string }) {
-  const text = `${station.brand || ""} ${station.name || ""}`.toUpperCase();
-  return mainBrands.some((brand) => text.includes(brand));
-}
-
-function stationMatchesOneBrand(station: { brand?: string; name?: string }, selectedBrand: string) {
-  if (selectedBrand === "OTRA") return !isMainBrandStation(station);
-  const text = `${station.brand || ""} ${station.name || ""}`.toUpperCase();
-  return text.includes(selectedBrand);
-}
-
-function filterByBrandSelections<T extends { brand?: string; name?: string }>(items: T[], selectedBrands: string[]) {
-  if (!selectedBrands.length) return items;
-  return items.filter((item) => selectedBrands.some((brand) => stationMatchesOneBrand(item, brand)));
-}
 
 function toRad(value: number) {
   return (value * Math.PI) / 180;
@@ -450,9 +433,6 @@ export async function POST(request: Request) {
 
     const fuel = body?.fuel || "gasolina95";
     const sortBy = body?.sortBy || "price";
-    const selectedBrands = Array.isArray(body?.selectedBrands)
-      ? body.selectedBrands.map((item: unknown) => String(item).toUpperCase())
-      : [];
     const radiusKm = Math.min(5, Math.max(1, Number(body?.maxDetourKm || 5)));
     const originInput = body?.origin || {};
     const destinationInput = body?.destination || {};
@@ -510,7 +490,7 @@ export async function POST(request: Request) {
 
       const rawStations = await loadStationsNear(stopPoint, fuel, radiusKm, 100);
 
-      const candidates = filterByBrandSelections(rawStations, selectedBrands)
+      const candidates = rawStations
         .map((station) => {
           const location = stationLatLon(station);
           const detourMeters = location ? haversineMeters(stopPoint, location) : station.distance_meters;
