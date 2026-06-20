@@ -827,7 +827,7 @@ export default function SearchPage() {
           <div className="rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-black text-emerald-600">Explorar gasolineras</p>
+                <p className="text-sm font-black text-emerald-600">Buscar precios de gasolineras</p>
                 <h1 className="text-2xl font-black">Encuentra dónde repostar mejor</h1>
               </div>
 
@@ -887,6 +887,15 @@ export default function SearchPage() {
               <button
                 onClick={loadManualRanking}
                 className="hidden rounded-2xl bg-blue-600 px-4 py-3 font-black text-white shadow-sm hover:bg-blue-500 sm:block"
+              >
+                Aplicar filtros
+              </button>
+            </div>
+
+            <div className="mt-3 sm:hidden">
+              <button
+                onClick={loadManualRanking}
+                className="w-full rounded-2xl bg-blue-600 px-4 py-3 font-black text-white shadow-sm hover:bg-blue-500"
               >
                 Aplicar filtros
               </button>

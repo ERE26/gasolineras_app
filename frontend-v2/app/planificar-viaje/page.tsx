@@ -79,6 +79,9 @@ const fuelOptions = [
   { value: "glp", label: "GLP" },
 ];
 
+const mainBrands = ["REPSOL", "MOEVE", "GALP", "BP", "DISA", "SHELL", "BALLENOIL", "PLENERGY"];
+const brandOptions = [...mainBrands, "OTRA"];
+
 const quickDestinations = [
   "Madrid",
   "Barcelona",
@@ -306,6 +309,19 @@ export default function TripPlannerPage() {
   const [loading, setLoading] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [showAllStops, setShowAllStops] = useState(true);
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [brandMenuOpen, setBrandMenuOpen] = useState(false);
+
+  function toggleBrandSelection(brand: string) {
+    setSelectedBrands((current) =>
+      current.includes(brand) ? current.filter((item) => item !== brand) : [...current, brand]
+    );
+  }
+
+  function clearBrandSelection() {
+    setSelectedBrands([]);
+    setBrandMenuOpen(false);
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem("myVehicles");
@@ -478,7 +494,6 @@ export default function TripPlannerPage() {
     }
   }
 
-  const firstRecommendedStation = result?.stops?.find((stop) => stop.best)?.best || null;
 
   return (
     <main className="min-h-screen bg-[#f3f6fb] text-slate-950">
@@ -522,7 +537,7 @@ export default function TripPlannerPage() {
                     <button
                       onClick={useCurrentLocation}
                       className={
-                        originMode === "current"
+                        originMode === "current" && originLocation
                           ? "rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white"
                           : "rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-200"
                       }
@@ -740,6 +755,50 @@ export default function TripPlannerPage() {
                     </div>
                   </div>
 
+                  <div className="mt-4 relative">
+                    <p className="mb-2 text-sm font-black">Marcas</p>
+                    <button
+                      type="button"
+                      onClick={() => setBrandMenuOpen((open) => !open)}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-black text-slate-800 shadow-sm hover:bg-slate-50"
+                    >
+                      {selectedBrands.length > 0 ? selectedBrands.join(", ") : "Todas las marcas"}
+                    </button>
+
+                    {brandMenuOpen && (
+                      <div className="absolute left-0 right-0 top-[76px] z-30 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                        {brandOptions.map((brandOption) => {
+                          const selected = selectedBrands.includes(brandOption);
+
+                          return (
+                            <button
+                              key={brandOption}
+                              type="button"
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => toggleBrandSelection(brandOption)}
+                              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-blue-50"
+                            >
+                              <span>{brandOption}</span>
+                              <span className={selected ? "text-blue-600" : "text-slate-300"}>
+                                {selected ? "✓" : "○"}
+                              </span>
+                            </button>
+                          );
+                        })}
+
+                        {selectedBrands.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={clearBrandSelection}
+                            className="block w-full border-t border-slate-100 px-4 py-3 text-left text-sm font-black text-red-600 hover:bg-red-50"
+                          >
+                            Quitar filtros de marca
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="mt-4">
                     <p className="mb-2 text-sm font-black">Combustible</p>
                     <div className="flex flex-wrap gap-2">
@@ -821,17 +880,6 @@ export default function TripPlannerPage() {
                     <p className="mt-1 font-black">{result.maxDetourKm} km</p>
                   </div>
                 </div>
-
-                {firstRecommendedStation && (
-                  <div className="rounded-3xl border border-blue-200 bg-blue-50 p-4">
-                    <p className="text-xs font-black uppercase text-blue-700">Mejor opción global</p>
-                    <h3 className="mt-1 text-lg font-black">{firstRecommendedStation.name || "Gasolinera"}</h3>
-                    <p className="text-sm font-bold text-blue-900">
-                      {Number(firstRecommendedStation.price).toFixed(3)} €/L · desvío{" "}
-                      {formatDetour(firstRecommendedStation.detourMeters)}
-                    </p>
-                  </div>
-                )}
 
                 <div className="pt-2">
                   <h3 className="text-lg font-black">Mejores paradas para repostar</h3>
