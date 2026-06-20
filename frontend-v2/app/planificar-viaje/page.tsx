@@ -552,9 +552,7 @@ export default function TripPlannerPage() {
                           ? "rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white"
                           : "rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-200"
                       }
-                    >
-                      Escribir
-                    </button>
+                    >Escribir ubicación</button>
                   </div>
 
                   {originMode === "current" && (
