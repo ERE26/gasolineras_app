@@ -70,42 +70,6 @@ const fuelOptions = [
 const mainBrands = ["REPSOL", "MOEVE", "GALP", "BP", "DISA", "SHELL", "BALLENOIL", "PLENERGY"];
 const brandOptions = [...mainBrands, "OTRA"];
 
-const LOCATION_CACHE_MINUTES = 10;
-const LOCATION_CACHE_MS = LOCATION_CACHE_MINUTES * 60 * 1000;
-
-function getSavedUserLocation(maxAgeMs = LOCATION_CACHE_MS) {
-  if (typeof window === "undefined") return null;
-
-  const saved = window.localStorage.getItem("lastUserLocation");
-  if (!saved) return null;
-
-  try {
-    const parsed = JSON.parse(saved);
-    const lat = Number(parsed.lat);
-    const lon = Number(parsed.lon);
-    const updatedAt = new Date(parsed.updatedAt).getTime();
-
-    if (!Number.isFinite(lat) || !Number.isFinite(lon) || !Number.isFinite(updatedAt)) {
-      return null;
-    }
-
-    const isFresh = Date.now() - updatedAt <= maxAgeMs;
-    if (!isFresh) return null;
-
-    return { lat, lon };
-  } catch {
-    return null;
-  }
-}
-
-function saveUserLocation(coords: { lat: number; lon: number }) {
-  window.localStorage.setItem(
-    "lastUserLocation",
-    JSON.stringify({ ...coords, updatedAt: new Date().toISOString() })
-  );
-}
-
-
 function isMainBrandStation(station: { brand?: string; name?: string }) {
   const text = `${station.brand || ""} ${station.name || ""}`.toUpperCase();
   return mainBrands.some((brand) => text.includes(brand));
@@ -231,13 +195,37 @@ export default function SearchPage() {
   const [sortMode, setSortMode] = useState<"price" | "distance">("price");
 
   async function requestUserLocation() {
-    // Al abrir la pantalla NO encendemos el GPS.
-    // Solo recuperamos una ubicación reciente guardada, para no consumir batería ni calentar el móvil.
-    const saved = getSavedUserLocation();
+    if (!navigator.geolocation) return;
 
-    if (saved) {
-      setUserLocation(saved);
-    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords = {
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+        };
+
+        setUserLocation(coords);
+        localStorage.setItem(
+          "lastUserLocation",
+          JSON.stringify({ ...coords, updatedAt: new Date().toISOString() })
+        );
+      },
+      () => {
+        const saved = localStorage.getItem("lastUserLocation");
+        if (!saved) return;
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.lat && parsed.lon) {
+            setUserLocation({ lat: parsed.lat, lon: parsed.lon });
+          }
+        } catch {}
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 9000,
+        maximumAge: 60000,
+      }
+    );
   }
 
   async function loadFilters(selectedProvince?: string) {
@@ -591,44 +579,12 @@ export default function SearchPage() {
     alert("Elige una dirección sugerida para evitar resultados lejos de tu ubicación.");
   }
 
-  async function labelCurrentLocation(lat: number, lon: number) {
-    try {
-      const params = new URLSearchParams({
-        lat: String(lat),
-        lon: String(lon),
-      });
-
-      const response = await fetch(`/api/reverse-geocode?${params.toString()}`);
-      const data = await response.json();
-
-      const label = data.shortLabel || data.label || "Tu ubicación actual";
-      setSearchAddress(label);
-      setSelectedAddress(null);
-      setAddressSuggestions([]);
-
-      return label;
-    } catch {
-      const fallback = "Tu ubicación actual";
-      setSearchAddress(fallback);
-      setSelectedAddress(null);
-      setAddressSuggestions([]);
-
-      return fallback;
-    }
-  }
-
   async function loadNearby(selectedFuel = fuel) {
-    // 1) Reutilizamos ubicación reciente para no volver a encender el GPS.
-    const saved = userLocation || getSavedUserLocation();
-
-    if (saved) {
-      setUserLocation(saved);
-      const locationLabel = await labelCurrentLocation(saved.lat, saved.lon);
-      await runSmartNearby(saved.lat, saved.lon, locationLabel, selectedFuel);
+    if (userLocation) {
+      await runSmartNearby(userLocation.lat, userLocation.lon, "tu ubicación", selectedFuel);
       return;
     }
 
-    // 2) Solo pedimos ubicación cuando el usuario pulsa el botón.
     if (!navigator.geolocation) {
       alert("Tu navegador no permite geolocalización.");
       return;
@@ -638,37 +594,17 @@ export default function SearchPage() {
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const coords = {
-          lat: position.coords.latitude,
-          lon: position.coords.longitude,
-        };
-
-        saveUserLocation(coords);
-        setUserLocation(coords);
-        const locationLabel = await labelCurrentLocation(coords.lat, coords.lon);
         setLoading(false);
-
-        await runSmartNearby(coords.lat, coords.lon, locationLabel, selectedFuel);
+        await runSmartNearby(position.coords.latitude, position.coords.longitude, "tu ubicación", selectedFuel);
       },
-      async () => {
-        const fallback = getSavedUserLocation(60 * 60 * 1000);
-
-        if (fallback) {
-          setUserLocation(fallback);
-          const locationLabel = await labelCurrentLocation(fallback.lat, fallback.lon);
-          setLoading(false);
-          runSmartNearby(fallback.lat, fallback.lon, locationLabel, selectedFuel);
-          return;
-        }
-
-        alert("No se ha podido obtener tu ubicación. Revisa los permisos de ubicación del navegador.");
+      () => {
+        alert("No se ha podido obtener tu ubicación.");
         setLoading(false);
       },
       {
-        // Más eficiente: suficiente para encontrar gasolineras cercanas sin forzar GPS de alta precisión.
-        enableHighAccuracy: false,
-        timeout: 8000,
-        maximumAge: LOCATION_CACHE_MS,
+        enableHighAccuracy: true,
+        timeout: 9000,
+        maximumAge: 60000,
       }
     );
   }
@@ -819,7 +755,7 @@ export default function SearchPage() {
   }, [stations, sortMode, favoriteOnly]);
 
   return (
-    <main className="min-h-screen bg-[#f3f6fb] text-slate-950">
+    <main className="min-h-screen bg-[#f7f9fc] text-slate-950">
       <TopNav />
 
       <section className="mx-auto max-w-7xl px-4 py-6">
@@ -827,8 +763,8 @@ export default function SearchPage() {
           <div className="rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-black text-emerald-600">Explorar gasolineras</p>
-                <h1 className="text-2xl font-black">Encuentra dónde repostar mejor</h1>
+                <p className="text-sm font-black text-blue-600">Centro de búsqueda</p>
+                <h1 className="text-2xl font-black">Busca, filtra y compara</h1>
               </div>
 
               {loading && (
@@ -872,29 +808,25 @@ export default function SearchPage() {
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
               <button
                 onClick={searchByAddress}
-                className="rounded-2xl bg-emerald-500 px-4 py-3 font-black text-white shadow-sm shadow-emerald-100 hover:bg-emerald-400"
+                className="rounded-2xl bg-blue-600 px-4 py-3 font-black text-white shadow-sm hover:bg-blue-500"
               >
-                Buscar zona
+                Buscar esta zona
               </button>
 
               <button
                 onClick={() => loadNearby(fuel)}
-                className="rounded-2xl bg-[#07111f] px-4 py-3 font-black text-white shadow-sm hover:bg-slate-800"
+                className="rounded-2xl bg-slate-950 px-4 py-3 font-black text-white shadow-sm hover:bg-slate-800"
               >
-                📍 Usar mi ubicación
+                Usar mi ubicación
               </button>
 
               <button
                 onClick={loadManualRanking}
-                className="rounded-2xl bg-blue-600 px-4 py-3 font-black text-white shadow-sm hover:bg-blue-500"
+                className="rounded-2xl bg-emerald-500 px-4 py-3 font-black text-white shadow-sm hover:bg-emerald-400"
               >
                 Aplicar filtros
               </button>
             </div>
-
-            <p className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600">
-              Al usar tu ubicación, Rivvo la muestra arriba para que sepas qué zona está aplicando. No hacemos seguimiento en segundo plano.
-            </p>
           </div>
 
           <div className="self-start rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
@@ -1059,6 +991,16 @@ export default function SearchPage() {
               El análisis de precio se hará solo con: {selectedBrands.join(", ")}.
             </p>
           )}
+
+          <div className="mt-3 md:hidden">
+            <button
+              type="button"
+              onClick={loadManualRanking}
+              className="w-full rounded-2xl bg-emerald-500 px-4 py-3 font-black text-white shadow-sm hover:bg-emerald-400"
+            >
+              Aplicar filtros
+            </button>
+          </div>
         </div>
 
         {advancedFiltersOpen && (
@@ -1125,7 +1067,7 @@ export default function SearchPage() {
                 onClick={loadManualRanking}
                 className="self-end rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-black text-white hover:bg-emerald-400"
               >
-                Aplicar filtros
+                Aplicar
               </button>
             </div>
           </div>
@@ -1148,7 +1090,7 @@ export default function SearchPage() {
             <div className="rounded-[1.8rem] border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h2 className="text-xl font-black">Resultados cerca de ti</h2>
+                  <h2 className="text-xl font-black">Gasolineras encontradas</h2>
                   <p className="text-sm text-slate-500">
                     {favoriteOnly
                       ? "Mostrando solo tu gasolinera favorita, sin compararla con otras."
