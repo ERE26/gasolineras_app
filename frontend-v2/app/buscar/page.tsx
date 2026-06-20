@@ -650,7 +650,7 @@ export default function SearchPage() {
 
         await runSmartNearby(coords.lat, coords.lon, locationLabel, selectedFuel);
       },
-      () => {
+      async () => {
         const fallback = getSavedUserLocation(60 * 60 * 1000);
 
         if (fallback) {
