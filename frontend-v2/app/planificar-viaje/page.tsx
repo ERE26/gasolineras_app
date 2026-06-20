@@ -134,7 +134,7 @@ const stopModes: Array<{
     value: "near-place",
     label: "En una zona concreta",
     helper: "Escribe una ciudad, zona o dirección concreta y elige una sugerencia.",
-    placeholder: "Ej: Tarancón, Albacete o Calle Mayor 10"
+    placeholder: "Ej: Tarancón, Albacete o Calle Mayor 10",
     examples: ["Zaragoza", "Tarancón", "Albacete", "Burgos"],
   },
 ];
