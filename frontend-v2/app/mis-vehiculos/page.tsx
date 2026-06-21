@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import TopNav from "../components/TopNav";
+import { supabase } from "../lib/supabaseClient";
 
 type Vehicle = {
   id: string;
@@ -26,28 +27,98 @@ function fuelLabel(value: string) {
 
 export default function VehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(true);
   const [name, setName] = useState("");
   const [fuel, setFuel] = useState("gasolina95");
   const [tankLiters, setTankLiters] = useState("");
   const [consumption, setConsumption] = useState("");
 
   useEffect(() => {
-    const saved = localStorage.getItem("myVehicles");
-    if (!saved) return;
-
-    try {
-      setVehicles(JSON.parse(saved));
-    } catch {
-      setVehicles([]);
-    }
+    loadVehicles();
   }, []);
 
-  function saveVehicles(nextVehicles: Vehicle[]) {
-    setVehicles(nextVehicles);
-    localStorage.setItem("myVehicles", JSON.stringify(nextVehicles));
+  async function loadVehicles() {
+    setSyncing(true);
+
+    const { data } = await supabase.auth.getUser();
+    const user = data.user;
+
+    if (!user) {
+      setUserId(null);
+
+      const saved = localStorage.getItem("myVehicles");
+      if (saved) {
+        try {
+          setVehicles(JSON.parse(saved));
+        } catch {
+          setVehicles([]);
+        }
+      }
+
+      setSyncing(false);
+      return;
+    }
+
+    setUserId(user.id);
+
+    const { data: rows, error } = await supabase
+      .from("user_vehicles")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      setSyncing(false);
+      return;
+    }
+
+    setVehicles(
+      (rows || []).map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        fuel: row.fuel,
+        tankLiters: Number(row.tank_liters || 0),
+        consumption: Number(row.consumption || 0),
+      }))
+    );
+
+    setSyncing(false);
   }
 
-  function addVehicle() {
+  async function saveVehicles(nextVehicles: Vehicle[]) {
+    setVehicles(nextVehicles);
+
+    if (!userId) {
+      localStorage.setItem("myVehicles", JSON.stringify(nextVehicles));
+      return;
+    }
+
+    setSyncing(true);
+
+    const currentIds = vehicles.map((vehicle) => vehicle.id);
+    const nextIds = nextVehicles.map((vehicle) => vehicle.id);
+    const removedIds = currentIds.filter((id) => !nextIds.includes(id));
+
+    if (removedIds.length > 0) {
+      await supabase.from("user_vehicles").delete().in("id", removedIds);
+    }
+
+    for (const vehicle of nextVehicles) {
+      await supabase.from("user_vehicles").upsert({
+        id: vehicle.id,
+        user_id: userId,
+        name: vehicle.name,
+        fuel: vehicle.fuel,
+        tank_liters: vehicle.tankLiters,
+        consumption: vehicle.consumption,
+      });
+    }
+
+    setSyncing(false);
+  }
+
+  async function addVehicle() {
     const parsedTank = Number(tankLiters.replace(",", "."));
     const parsedConsumption = Number(consumption.replace(",", "."));
 
@@ -74,37 +145,49 @@ export default function VehiclesPage() {
       consumption: parsedConsumption,
     };
 
-    saveVehicles([...vehicles, vehicle]);
+    await saveVehicles([...vehicles, vehicle]);
     setName("");
     setTankLiters("");
     setConsumption("");
     setFuel("gasolina95");
   }
 
-  function removeVehicle(id: string) {
-    saveVehicles(vehicles.filter((vehicle) => vehicle.id !== id));
+  async function removeVehicle(id: string) {
+    await saveVehicles(vehicles.filter((vehicle) => vehicle.id !== id));
   }
 
   return (
-    <main className="min-h-screen bg-[#f3f6fb] text-slate-950">
+    <main className="min-h-screen bg-[#f7f9fc] text-slate-950">
       <TopNav />
 
       <section className="mx-auto max-w-7xl px-6 py-7">
         <div className="mb-6">
-          <p className="text-sm font-black text-amber-600">Mis vehículos</p>
-          <h1 className="text-4xl font-black">Tus vehículos</h1>
+          <p className="text-sm font-black text-purple-600">Mis vehículos</p>
+          <h1 className="text-4xl font-black">Vehículos y consumo</h1>
           <p className="mt-2 max-w-3xl text-slate-600">
-            Añade depósito y consumo para saber si merece la pena desviarte a una gasolinera más barata.
+            Guarda depósito y consumo para calcular el coste real de repostar y desplazarte.
           </p>
+
+          {!userId && !syncing && (
+            <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+              Estás sin iniciar sesión. Puedes probarlo, pero para guardar tus vehículos en tu perfil entra con tu cuenta.
+            </p>
+          )}
+
+          {userId && (
+            <p className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
+              Vehículos sincronizados con tu perfil.
+            </p>
+          )}
         </div>
 
         <div className="grid items-start gap-6 lg:grid-cols-[1fr_.82fr]">
           <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-2xl font-black">Coches guardados</h2>
+                <h2 className="text-2xl font-black">Vehículos guardados</h2>
                 <p className="text-sm text-slate-500">
-                  Se usan en Buscar y Planifica tu viaje para estimar ahorro real.
+                  {userId ? "Se guardan en tu perfil y aparecen en el buscador." : "Se guardan en tu navegador hasta que entres en tu cuenta."}
                 </p>
               </div>
 
@@ -151,7 +234,7 @@ export default function VehiclesPage() {
           </section>
 
           <aside className="self-start rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-black text-amber-600">Añadir vehículo</p>
+            <p className="text-sm font-black text-purple-600">Añadir vehículo</p>
             <h2 className="mt-1 text-2xl font-black">Datos básicos</h2>
 
             <div className="mt-5 space-y-4">
@@ -175,7 +258,7 @@ export default function VehiclesPage() {
                       className={
                         fuel === option.value
                           ? "rounded-full bg-purple-600 px-3 py-2 text-xs font-black text-white"
-                          : "rounded-full bg-amber-50 px-3 py-2 text-xs font-black text-amber-700 hover:bg-amber-100"
+                          : "rounded-full bg-purple-50 px-3 py-2 text-xs font-black text-purple-700 hover:bg-purple-100"
                       }
                     >
                       {option.label}
@@ -224,14 +307,14 @@ export default function VehiclesPage() {
                 </div>
               </div>
 
-              <div className="rounded-3xl bg-amber-50 p-4 text-sm text-purple-900">
+              <div className="rounded-3xl bg-purple-50 p-4 text-sm text-purple-900">
                 El depósito sirve para calcular cuánto pagas al llenar. El consumo sirve
                 para estimar si compensa desviarte.
               </div>
 
               <button
                 onClick={addVehicle}
-                className="w-full rounded-2xl bg-purple-600 px-5 py-4 text-lg font-black text-white shadow-lg hover:bg-amber-500"
+                className="w-full rounded-2xl bg-purple-600 px-5 py-4 text-lg font-black text-white shadow-lg hover:bg-purple-500"
               >
                 Guardar vehículo
               </button>
