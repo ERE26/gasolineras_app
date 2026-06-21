@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import AuthStatus from "./AuthStatus";
 
 const navItems = [
   { href: "/", label: "Inicio" },
@@ -84,6 +85,10 @@ export default function TopNav() {
               );
             })}
           </nav>
+
+          <div className="hidden lg:block">
+            <AuthStatus />
+          </div>
         </div>
 
         {menuOpen && (
@@ -106,6 +111,9 @@ export default function TopNav() {
                 </Link>
               );
             })}
+            <div className="pt-1">
+              <AuthStatus />
+            </div>
           </nav>
         )}
       </div>
