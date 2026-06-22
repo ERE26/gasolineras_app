@@ -8,6 +8,8 @@ import { supabase } from "../lib/supabaseClient";
 type Vehicle = {
   id: string;
   name: string;
+  make?: string;
+  model?: string;
   fuel: string;
   tankLiters: number;
   consumption: number;
@@ -30,6 +32,8 @@ export default function VehiclesPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(true);
   const [name, setName] = useState("");
+  const [make, setMake] = useState("");
+  const [model, setModel] = useState("");
   const [fuel, setFuel] = useState("gasolina95");
   const [tankLiters, setTankLiters] = useState("");
   const [consumption, setConsumption] = useState("");
@@ -77,6 +81,8 @@ export default function VehiclesPage() {
       (rows || []).map((row: any) => ({
         id: row.id,
         name: row.name,
+        make: row.make || undefined,
+        model: row.model || undefined,
         fuel: row.fuel,
         tankLiters: Number(row.tank_liters || 0),
         consumption: Number(row.consumption || 0),
@@ -109,6 +115,8 @@ export default function VehiclesPage() {
         id: vehicle.id,
         user_id: userId,
         name: vehicle.name,
+        make: vehicle.make || null,
+        model: vehicle.model || null,
         fuel: vehicle.fuel,
         tank_liters: vehicle.tankLiters,
         consumption: vehicle.consumption,
@@ -140,6 +148,8 @@ export default function VehiclesPage() {
     const vehicle: Vehicle = {
       id: crypto.randomUUID(),
       name: name.trim(),
+      make: make.trim() || undefined,
+      model: model.trim() || undefined,
       fuel,
       tankLiters: parsedTank,
       consumption: parsedConsumption,
@@ -147,6 +157,8 @@ export default function VehiclesPage() {
 
     await saveVehicles([...vehicles, vehicle]);
     setName("");
+    setMake("");
+    setModel("");
     setTankLiters("");
     setConsumption("");
     setFuel("gasolina95");
@@ -205,6 +217,11 @@ export default function VehiclesPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <h3 className="text-xl font-black">{vehicle.name}</h3>
+                      {(vehicle.make || vehicle.model) && (
+                        <p className="mt-1 text-sm font-bold text-purple-700">
+                          {[vehicle.make, vehicle.model].filter(Boolean).join(" ")}
+                        </p>
+                      )}
                       <p className="mt-1 text-sm text-slate-500">
                         {fuelLabel(vehicle.fuel)} · {vehicle.tankLiters} L ·{" "}
                         {vehicle.consumption} L/100 km
@@ -243,9 +260,31 @@ export default function VehiclesPage() {
                 <input
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  placeholder="Ej: Golf, Ibiza, moto..."
+                  placeholder="Ej: Mi coche principal"
                   className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
                 />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-black">Marca</label>
+                  <input
+                    value={make}
+                    onChange={(event) => setMake(event.target.value)}
+                    placeholder="Ej: Volkswagen"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-black">Modelo</label>
+                  <input
+                    value={model}
+                    onChange={(event) => setModel(event.target.value)}
+                    placeholder="Ej: Golf"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  />
+                </div>
               </div>
 
               <div>

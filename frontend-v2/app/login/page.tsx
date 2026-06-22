@@ -24,14 +24,20 @@ export default function LoginPage() {
 
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-         email: email.trim(),
-         password,
-         options: {
-          emailRedirectTo: `${window.location.origin}/perfil`,
-         },
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/perfil`,
+          },
         });
+
         if (error) throw error;
+
+        if (data.session) {
+          window.location.href = "/perfil";
+          return;
+        }
 
         setMessage("Cuenta creada. Revisa tu email si Supabase te pide confirmar la cuenta.");
         return;

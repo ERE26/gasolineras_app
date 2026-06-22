@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import AutocompleteInput from "../components/AutocompleteInput";
 import StationCard from "../components/StationCard";
 import TopNav from "../components/TopNav";
+import { supabase } from "../lib/supabaseClient";
 
 const GasMap = dynamic(() => import("../components/GasMap"), {
   ssr: false,
@@ -30,6 +31,8 @@ type Station = {
 type Vehicle = {
   id: string;
   name: string;
+  make?: string;
+  model?: string;
   fuel: string;
   tankLiters: number;
   consumption: number;
@@ -317,55 +320,167 @@ export default function SearchPage() {
     }
   }
 
-  function loadVehiclesFromStorage() {
-    const saved = localStorage.getItem("myVehicles");
-    if (!saved) return;
+  async function loadVehicles() {
+    const { data } = await supabase.auth.getUser();
+    const user = data.user;
 
-    const parsed: Vehicle[] = JSON.parse(saved);
+    if (!user) {
+      const saved = localStorage.getItem("myVehicles");
+      if (!saved) return;
+
+      try {
+        const parsed: Vehicle[] = JSON.parse(saved);
+        setVehicles(parsed);
+        if (parsed[0]) {
+          setSelectedVehicleId(parsed[0].id);
+          setFuel(parsed[0].fuel);
+        }
+      } catch {}
+
+      return;
+    }
+
+    const { data: rows, error } = await supabase
+      .from("user_vehicles")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    const parsed = (rows || []).map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      make: row.make || undefined,
+      model: row.model || undefined,
+      fuel: row.fuel,
+      tankLiters: Number(row.tank_liters || 0),
+      consumption: Number(row.consumption || 0),
+    }));
+
     setVehicles(parsed);
 
-    if (parsed.length > 0) {
+    if (parsed[0]) {
       setSelectedVehicleId(parsed[0].id);
       setFuel(parsed[0].fuel);
     }
   }
 
-  function loadFavoritesFromStorage() {
-    const savedFull = localStorage.getItem("favoriteStationsFull");
-    if (savedFull) {
+  async function loadFavorites() {
+    const { data } = await supabase.auth.getUser();
+    const user = data.user;
+
+    if (!user) {
+      const savedFull = localStorage.getItem("favoriteStationsFull");
+      if (savedFull) {
+        try {
+          const parsed: FavoriteStation[] = JSON.parse(savedFull);
+          setFavoriteStationsFull(parsed);
+          setFavoriteStationIds(parsed.map((item) => item.id));
+          return;
+        } catch {}
+      }
+
+      const saved = localStorage.getItem("favoriteStations");
+      if (!saved) return;
+
       try {
-        const parsed: FavoriteStation[] = JSON.parse(savedFull);
-        setFavoriteStationsFull(parsed);
-        setFavoriteStationIds(parsed.map((item) => item.id));
-        return;
+        const ids = JSON.parse(saved);
+        setFavoriteStationIds(ids);
       } catch {}
-    }
 
-    const saved = localStorage.getItem("favoriteStations");
-    if (!saved) return;
-
-    try {
-      const ids = JSON.parse(saved);
-      setFavoriteStationIds(ids);
-    } catch {}
-  }
-
-  function saveFavorites(nextFavorites: FavoriteStation[]) {
-    setFavoriteStationsFull(nextFavorites);
-    setFavoriteStationIds(nextFavorites.map((item) => item.id));
-    localStorage.setItem("favoriteStationsFull", JSON.stringify(nextFavorites));
-    localStorage.setItem("favoriteStations", JSON.stringify(nextFavorites.map((item) => item.id)));
-  }
-
-  function toggleFavoriteStation(station: Station) {
-    const exists = favoriteStationIds.some((id) => String(id) === String(station.id));
-
-    if (exists) {
-      saveFavorites(favoriteStationsFull.filter((item) => String(item.id) !== String(station.id)));
       return;
     }
 
-    saveFavorites([...favoriteStationsFull, { ...station }]);
+    const { data: rows, error } = await supabase
+      .from("user_favorite_stations")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    const parsed = (rows || []).map((row: any) => ({
+      id: row.station_id,
+      name: row.name,
+      brand: row.brand || undefined,
+      address: row.address || undefined,
+      province: row.province || undefined,
+      municipality: row.municipality || undefined,
+      latitude: row.latitude ? Number(row.latitude) : undefined,
+      longitude: row.longitude ? Number(row.longitude) : undefined,
+      price: row.price || undefined,
+      fuel_type: row.fuel_type || undefined,
+    }));
+
+    setFavoriteStationsFull(parsed);
+    setFavoriteStationIds(parsed.map((item) => item.id));
+  }
+
+  async function saveFavorites(nextFavorites: FavoriteStation[]) {
+    setFavoriteStationsFull(nextFavorites);
+    setFavoriteStationIds(nextFavorites.map((item) => item.id));
+
+    const { data } = await supabase.auth.getUser();
+    const user = data.user;
+
+    if (!user) {
+      localStorage.setItem("favoriteStationsFull", JSON.stringify(nextFavorites));
+      localStorage.setItem("favoriteStations", JSON.stringify(nextFavorites.map((item) => item.id)));
+      return;
+    }
+
+    const currentIds = favoriteStationsFull.map((item) => String(item.id));
+    const nextIds = nextFavorites.map((item) => String(item.id));
+    const removedIds = currentIds.filter((id) => !nextIds.includes(id));
+
+    if (removedIds.length > 0) {
+      const { error: deleteError } = await supabase
+        .from("user_favorite_stations")
+        .delete()
+        .in("station_id", removedIds);
+
+      if (deleteError) console.error(deleteError);
+    }
+
+    for (const station of nextFavorites) {
+      const { error: upsertError } = await supabase.from("user_favorite_stations").upsert(
+        {
+          user_id: user.id,
+          station_id: String(station.id),
+          name: station.name,
+          brand: station.brand || null,
+          address: station.address || null,
+          province: station.province || null,
+          municipality: station.municipality || null,
+          latitude: station.latitude || null,
+          longitude: station.longitude || null,
+          price: station.price || null,
+          fuel_type: station.fuel_type || null,
+        },
+        { onConflict: "user_id,station_id" }
+      );
+
+      if (upsertError) {
+        console.error(upsertError);
+        alert("No se ha podido guardar la favorita en tu perfil. Revisa Supabase.");
+      }
+    }
+  }
+
+  async function toggleFavoriteStation(station: Station) {
+    const exists = favoriteStationIds.some((id) => String(id) === String(station.id));
+
+    if (exists) {
+      await saveFavorites(favoriteStationsFull.filter((item) => String(item.id) !== String(station.id)));
+      return;
+    }
+
+    await saveFavorites([...favoriteStationsFull, { ...station }]);
   }
 
   function normalizeFavoriteToStation(favorite: FavoriteStation): Station | null {
@@ -755,8 +870,8 @@ export default function SearchPage() {
 
   useEffect(() => {
     loadFilters();
-    loadVehiclesFromStorage();
-    loadFavoritesFromStorage();
+    loadVehicles();
+    loadFavorites();
     requestUserLocation();
   }, []);
 
@@ -917,7 +1032,25 @@ export default function SearchPage() {
           </div>
         </div>
 
-        <div className="relative mb-4 rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:hidden">
+          <Link
+            href="/favoritas"
+            className="rounded-[1.4rem] border border-amber-200 bg-amber-50 px-4 py-4 shadow-sm"
+          >
+            <p className="text-xs font-black uppercase text-amber-700">Mis estaciones favoritas</p>
+            <p className="mt-1 text-sm font-bold text-amber-950">Ver y usar tus gasolineras guardadas</p>
+          </Link>
+
+          <Link
+            href="/mis-vehiculos"
+            className="rounded-[1.4rem] border border-purple-200 bg-purple-50 px-4 py-4 shadow-sm"
+          >
+            <p className="text-xs font-black uppercase text-purple-700">Mis vehículos</p>
+            <p className="mt-1 text-sm font-bold text-purple-950">Añadir coche y aplicar consumo</p>
+          </Link>
+        </div>
+
+        <div className="relative z-[80] mb-4 rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
           <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
             <div className="relative">
               <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Marcas</p>
@@ -1030,6 +1163,9 @@ export default function SearchPage() {
                         className="block w-full px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-purple-50"
                       >
                         <span className="font-black">{vehicle.name}</span>
+                        {(vehicle.make || vehicle.model) && (
+                          <span className="ml-2 text-slate-500">· {[vehicle.make, vehicle.model].filter(Boolean).join(" ")}</span>
+                        )}
                         <span className="ml-2 text-slate-500">· {vehicle.tankLiters} L · {vehicle.consumption} L/100 km</span>
                       </button>
                     ))

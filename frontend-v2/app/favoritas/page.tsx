@@ -189,11 +189,12 @@ export default function FavoritesPage() {
     const removedIds = currentIds.filter((id) => !nextIds.includes(id));
 
     if (removedIds.length > 0) {
-      await supabase.from("user_favorite_stations").delete().in("station_id", removedIds);
+      const { error: deleteError } = await supabase.from("user_favorite_stations").delete().in("station_id", removedIds);
+      if (deleteError) console.error(deleteError);
     }
 
     for (const station of next) {
-      await supabase.from("user_favorite_stations").upsert(
+      const { error: upsertError } = await supabase.from("user_favorite_stations").upsert(
         {
           user_id: userId,
           station_id: String(station.id),
@@ -209,6 +210,11 @@ export default function FavoritesPage() {
         },
         { onConflict: "user_id,station_id" }
       );
+
+      if (upsertError) {
+        console.error(upsertError);
+        alert("No se ha podido guardar la favorita en tu perfil. Revisa Supabase.");
+      }
     }
 
     setSyncing(false);
