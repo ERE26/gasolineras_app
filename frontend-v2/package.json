@@ -6,10 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "build:mobile": "cross-env RIVVO_MOBILE_EXPORT=true next build",
+    "cap:sync:android": "npm run build:mobile && npx cap sync android",
+    "cap:open:android": "npx cap open android"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.108.2",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "axios": "^1.17.0",
@@ -18,7 +20,9 @@
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "react-leaflet": "^5.0.0"
+    "react-leaflet": "^5.0.0",
+    "@supabase/supabase-js": "^2.86.0",
+    "@capacitor/core": "^7.4.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -30,6 +34,9 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "@capacitor/cli": "^7.4.4",
+    "@capacitor/android": "^7.4.4",
+    "cross-env": "^10.1.0"
   }
 }

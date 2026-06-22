@@ -23,6 +23,46 @@ const fuelOptions = [
   { value: "glp", label: "GLP" },
 ];
 
+const carCatalog: Record<string, string[]> = {
+  Abarth: ["500", "595", "695", "124 Spider"],
+  "Alfa Romeo": ["Giulia", "Giulietta", "MiTo", "Stelvio", "Tonale"],
+  Audi: ["A1", "A3", "A4", "A5", "A6", "Q2", "Q3", "Q5", "Q7", "Q8", "TT"],
+  BMW: ["Serie 1", "Serie 2", "Serie 3", "Serie 4", "Serie 5", "X1", "X2", "X3", "X5", "X6"],
+  Citroën: ["C1", "C3", "C3 Aircross", "C4", "C4 Cactus", "C5 Aircross", "Berlingo"],
+  Cupra: ["Born", "Formentor", "León", "Ateca", "Tavascan"],
+  Dacia: ["Sandero", "Logan", "Duster", "Jogger", "Spring"],
+  Fiat: ["500", "500X", "Panda", "Tipo", "Punto", "Doblò"],
+  Ford: ["Fiesta", "Focus", "Puma", "Kuga", "Mondeo", "Mustang", "Transit"],
+  Honda: ["Jazz", "Civic", "HR-V", "CR-V", "e"],
+  Hyundai: ["i10", "i20", "i30", "Kona", "Tucson", "Santa Fe", "IONIQ 5"],
+  Jaguar: ["XE", "XF", "F-Pace", "E-Pace", "I-Pace"],
+  Jeep: ["Renegade", "Compass", "Cherokee", "Wrangler", "Avenger"],
+  Kia: ["Picanto", "Rio", "Ceed", "Stonic", "Sportage", "Niro", "Sorento", "EV6"],
+  "Land Rover": ["Range Rover Evoque", "Discovery Sport", "Defender", "Range Rover Sport"],
+  Lexus: ["CT", "UX", "NX", "RX", "ES", "IS"],
+  Mazda: ["Mazda2", "Mazda3", "CX-3", "CX-30", "CX-5", "MX-5"],
+  Mercedes: ["Clase A", "Clase B", "Clase C", "Clase E", "GLA", "GLB", "GLC", "GLE"],
+  Mini: ["Cooper", "Countryman", "Clubman", "Paceman"],
+  Mitsubishi: ["Space Star", "ASX", "Eclipse Cross", "Outlander"],
+  Nissan: ["Micra", "Juke", "Qashqai", "X-Trail", "Leaf", "Ariya"],
+  Opel: ["Corsa", "Astra", "Mokka", "Crossland", "Grandland", "Insignia"],
+  Peugeot: ["108", "208", "308", "508", "2008", "3008", "5008", "Partner"],
+  Porsche: ["Macan", "Cayenne", "Panamera", "911", "Taycan"],
+  Renault: ["Clio", "Captur", "Mégane", "Scénic", "Kadjar", "Austral", "Arkana"],
+  Seat: ["Ibiza", "León", "Arona", "Ateca", "Tarraco", "Alhambra"],
+  Skoda: ["Fabia", "Octavia", "Scala", "Kamiq", "Karoq", "Kodiaq", "Superb"],
+  Smart: ["Fortwo", "Forfour", "#1", "#3"],
+  Subaru: ["Impreza", "XV", "Forester", "Outback", "BRZ"],
+  Suzuki: ["Swift", "Vitara", "S-Cross", "Ignis", "Jimny"],
+  Tesla: ["Model 3", "Model Y", "Model S", "Model X"],
+  Toyota: ["Aygo", "Yaris", "Corolla", "C-HR", "RAV4", "Prius", "Land Cruiser"],
+  Volkswagen: ["Up", "Polo", "Golf", "Passat", "T-Cross", "T-Roc", "Tiguan", "Touran"],
+  Volvo: ["XC40", "XC60", "XC90", "V40", "V60", "V90", "S60"],
+};
+
+const carMakes = Object.keys(carCatalog).sort((a, b) => a.localeCompare(b, "es"));
+
+
 function fuelLabel(value: string) {
   return fuelOptions.find((item) => item.value === value)?.label || value;
 }
@@ -37,6 +77,8 @@ export default function VehiclesPage() {
   const [fuel, setFuel] = useState("gasolina95");
   const [tankLiters, setTankLiters] = useState("");
   const [consumption, setConsumption] = useState("");
+
+  const modelOptions = make ? carCatalog[make] || [] : [];
 
   useEffect(() => {
     loadVehicles();
@@ -268,22 +310,49 @@ export default function VehiclesPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-black">Marca</label>
-                  <input
+                  <select
                     value={make}
-                    onChange={(event) => setMake(event.target.value)}
-                    placeholder="Ej: Volkswagen"
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                  />
+                    onChange={(event) => {
+                      setMake(event.target.value);
+                      setModel("");
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  >
+                    <option value="">Seleccionar marca</option>
+                    {carMakes.map((makeOption) => (
+                      <option key={makeOption} value={makeOption}>
+                        {makeOption}
+                      </option>
+                    ))}
+                    <option value="Otra">Otra</option>
+                  </select>
                 </div>
 
                 <div>
                   <label className="mb-2 block text-sm font-black">Modelo</label>
-                  <input
-                    value={model}
-                    onChange={(event) => setModel(event.target.value)}
-                    placeholder="Ej: Golf"
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                  />
+                  {make && make !== "Otra" ? (
+                    <select
+                      value={model}
+                      onChange={(event) => setModel(event.target.value)}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                    >
+                      <option value="">Seleccionar modelo</option>
+                      {modelOptions.map((modelOption) => (
+                        <option key={modelOption} value={modelOption}>
+                          {modelOption}
+                        </option>
+                      ))}
+                      <option value="Otro">Otro</option>
+                    </select>
+                  ) : (
+                    <input
+                      value={model}
+                      onChange={(event) => setModel(event.target.value)}
+                      placeholder={make === "Otra" ? "Escribe el modelo" : "Elige primero la marca"}
+                      disabled={!make}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-50"
+                    />
+                  )}
                 </div>
               </div>
 
