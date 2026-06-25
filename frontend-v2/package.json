@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "build:mobile": "cross-env RIVVO_MOBILE_EXPORT=true next build",
+    "build:mobile": "next build",
     "cap:sync:android": "npm run build:mobile && npx cap sync android",
     "cap:open:android": "npx cap open android"
   },

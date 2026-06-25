@@ -1,16 +1,7 @@
 import type { NextConfig } from "next";
 
-const isMobileExport = process.env.RIVVO_MOBILE_EXPORT === "true";
-
 const nextConfig: NextConfig = {
-  ...(isMobileExport
-    ? {
-        output: "export",
-        images: {
-          unoptimized: true,
-        },
-      }
-    : {}),
+  /* config options here */
 };
 
 export default nextConfig;

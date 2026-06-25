@@ -1,58 +1,45 @@
 # Rivvo móvil con Capacitor
 
-La web normal se despliega en Vercel con:
+Rivvo usa rutas API de Next (`/api/address-suggest`, `/api/trip-plan`, etc.). Por eso NO usamos `output: "export"` para Capacitor: una exportación estática rompe esas rutas.
 
-```cmd
-npm run build
+La app Android de Capacitor cargará la web desplegada en Vercel:
+
+```txt
+https://gasolineras-app-mu.vercel.app
 ```
 
-La versión móvil para Capacitor se genera en carpeta `out` con:
+## Flujo correcto
 
-```cmd
-npm run build:mobile
-```
-
-## Instalar dependencias
+### 1. Comprobar que la web compila
 
 ```cmd
 cd /d "C:\Users\eduar\Downloads\gasolineras_app(5)\gasolineras_app\frontend-v2"
 
-npm install
+npm run build
 ```
 
-## Añadir Android
+### 2. Añadir Android si todavía no existe
 
 ```cmd
 npx cap add android
 ```
 
-## Build web y copiar a Android
+### 3. Sincronizar Android
 
 ```cmd
 npm run build:mobile
 npx cap sync android
 ```
 
-## Abrir Android Studio
+### 4. Abrir Android Studio
 
 ```cmd
 npx cap open android
 ```
 
-## iOS
-
-Para iOS necesitarás Mac con Xcode:
-
-```bash
-npm install @capacitor/ios
-npx cap add ios
-npm run build:mobile
-npx cap sync ios
-npx cap open ios
-```
-
 ## Importante
 
-- `npm run build` es para Vercel.
-- `npm run build:mobile` es para Capacitor y genera la carpeta `out`.
-- No subas carpetas pesadas como `android`, `ios`, `.next` u `out` hasta que decidamos cómo organizarlo en Git.
+- `npm run build:mobile` ahora hace `next build`, no exportación estática.
+- La app nativa cargará la URL de producción.
+- Antes de subir a tiendas hay que tener dominio definitivo, política de privacidad y permisos de ubicación bien explicados.
+- Cuando tengamos dominio propio, cambiaremos `server.url` en `capacitor.config.ts`.
