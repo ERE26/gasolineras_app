@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -62,12 +62,12 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 const fuelOptions = [
   { value: "gasolina95", label: "Gasolina 95" },
   { value: "gasolina98", label: "Gasolina 98" },
-  { value: "diesel", label: "Diésel" },
-  { value: "diesel_premium", label: "Diésel premium" },
+  { value: "diesel", label: "DiÃ©sel" },
+  { value: "diesel_premium", label: "DiÃ©sel premium" },
   { value: "glp", label: "GLP" },
   { value: "gnc", label: "GNC" },
   { value: "gnl", label: "GNL" },
-  { value: "hidrogeno", label: "Hidrógeno" },
+  { value: "hidrogeno", label: "HidrÃ³geno" },
 ];
 
 const mainBrands = ["REPSOL", "MOEVE", "GALP", "BP", "DISA", "SHELL", "BALLENOIL", "PLENERGY"];
@@ -153,10 +153,10 @@ type FavoriteStation = Station | {
 };
 
 const majorCities = [
-  "madrid", "barcelona", "valencia", "sevilla", "zaragoza", "malaga", "málaga",
+  "madrid", "barcelona", "valencia", "sevilla", "zaragoza", "malaga", "mÃ¡laga",
   "murcia", "palma", "bilbao", "alicante", "valladolid", "vigo", "gijon",
-  "gijón", "granada", "elche", "oviedo", "cartagena", "sabadell", "mostoles",
-  "móstoles", "santa cruz de tenerife",
+  "gijÃ³n", "granada", "elche", "oviedo", "cartagena", "sabadell", "mostoles",
+  "mÃ³stoles", "santa cruz de tenerife",
 ];
 
 function normalize(value: string) {
@@ -235,7 +235,7 @@ export default function SearchPage() {
 
   async function requestUserLocation() {
     // Al abrir la pantalla NO encendemos el GPS.
-    // Solo recuperamos una ubicación reciente guardada, para no consumir batería ni calentar el móvil.
+    // Solo recuperamos una ubicaciÃ³n reciente guardada, para no consumir baterÃ­a ni calentar el mÃ³vil.
     const saved = getSavedUserLocation();
 
     if (saved) {
@@ -315,7 +315,7 @@ export default function SearchPage() {
 
       setAddressSuggestions(suggestions);
     } catch (error) {
-      console.error("Error cargando sugerencias de dirección:", error);
+      console.error("Error cargando sugerencias de direcciÃ³n:", error);
       setAddressSuggestions([]);
     }
   }
@@ -492,7 +492,7 @@ export default function SearchPage() {
       id: typeof favorite.id === "number" ? favorite.id : Date.now(),
       name: favorite.name,
       brand: favorite.brand || "Favorita",
-      address: favorite.address || "Dirección no indicada",
+      address: favorite.address || "DirecciÃ³n no indicada",
       province: favorite.province || "",
       municipality: favorite.municipality || "",
       latitude: favorite.latitude,
@@ -509,7 +509,7 @@ export default function SearchPage() {
     const station = normalizeFavoriteToStation(favorite);
 
     if (!station) {
-      alert("Esta favorita no tiene precio guardado todavía. Búscala de nuevo desde Favoritas o desde el buscador para guardar sus datos completos.");
+      alert("Esta favorita no tiene precio guardado todavÃ­a. BÃºscala de nuevo desde Favoritas o desde el buscador para guardar sus datos completos.");
       return;
     }
 
@@ -552,7 +552,7 @@ export default function SearchPage() {
     const vehicle = vehicles.find((item) => item.id === vehicleId);
     if (!vehicle) return;
 
-    setFuel(vehicle.fuel);
+    void applyFuelChange(vehicle.fuel);
   }
 
   async function fetchNearby(lat: number, lon: number, radiusKm: number, selectedFuel = fuel) {
@@ -636,7 +636,7 @@ export default function SearchPage() {
 
       if (area.isMajorCity && nearby.length < 5) {
         radiusToUse = 5;
-        reason = "había pocas estaciones en 1 km, ampliamos a 5 km";
+        reason = "habÃ­a pocas estaciones en 1 km, ampliamos a 5 km";
         nearby = await fetchNearby(lat, lon, 5, selectedFuel);
       }
 
@@ -690,7 +690,7 @@ export default function SearchPage() {
     }
 
     if (!searchAddress.trim()) {
-      alert("Escribe una dirección o zona.");
+      alert("Escribe una direcciÃ³n o zona.");
       return;
     }
 
@@ -703,7 +703,7 @@ export default function SearchPage() {
       return;
     }
 
-    alert("Elige una dirección sugerida para evitar resultados lejos de tu ubicación.");
+    alert("Elige una direcciÃ³n sugerida para evitar resultados lejos de tu ubicaciÃ³n.");
   }
 
   async function labelCurrentLocation(lat: number, lon: number) {
@@ -716,14 +716,14 @@ export default function SearchPage() {
       const response = await fetch(`/api/reverse-geocode?${params.toString()}`);
       const data = await response.json();
 
-      const label = data.shortLabel || data.label || "Tu ubicación actual";
+      const label = data.shortLabel || data.label || "Tu ubicaciÃ³n actual";
       setSearchAddress(label);
       setSelectedAddress(null);
       setAddressSuggestions([]);
 
       return label;
     } catch {
-      const fallback = "Tu ubicación actual";
+      const fallback = "Tu ubicaciÃ³n actual";
       setSearchAddress(fallback);
       setSelectedAddress(null);
       setAddressSuggestions([]);
@@ -733,7 +733,7 @@ export default function SearchPage() {
   }
 
   async function loadNearby(selectedFuel = fuel) {
-    // 1) Reutilizamos ubicación reciente para no volver a encender el GPS.
+    // 1) Reutilizamos ubicaciÃ³n reciente para no volver a encender el GPS.
     const saved = userLocation || getSavedUserLocation();
 
     if (saved) {
@@ -743,9 +743,9 @@ export default function SearchPage() {
       return;
     }
 
-    // 2) Solo pedimos ubicación cuando el usuario pulsa el botón.
+    // 2) Solo pedimos ubicaciÃ³n cuando el usuario pulsa el botÃ³n.
     if (!navigator.geolocation) {
-      alert("Tu navegador no permite geolocalización.");
+      alert("Tu navegador no permite geolocalizaciÃ³n.");
       return;
     }
 
@@ -776,11 +776,11 @@ export default function SearchPage() {
           return;
         }
 
-        alert("No se ha podido obtener tu ubicación. Revisa los permisos de ubicación del navegador.");
+        alert("No se ha podido obtener tu ubicaciÃ³n. Revisa los permisos de ubicaciÃ³n del navegador.");
         setLoading(false);
       },
       {
-        // Más eficiente: suficiente para encontrar gasolineras cercanas sin forzar GPS de alta precisión.
+        // MÃ¡s eficiente: suficiente para encontrar gasolineras cercanas sin forzar GPS de alta precisiÃ³n.
         enableHighAccuracy: false,
         timeout: 8000,
         maximumAge: LOCATION_CACHE_MS,
@@ -788,19 +788,19 @@ export default function SearchPage() {
     );
   }
 
-  async function loadManualRanking() {
+  async function loadManualRanking(selectedFuel = fuel) {
     const hasAreaFilter = Boolean(province.trim() || municipality.trim());
 
-    // Si el usuario ya había buscado por ubicación o por una dirección concreta,
-    // aplicar filtros debe mantener esa misma ubicación como referencia.
+    // Si el usuario ya habÃ­a buscado por ubicaciÃ³n o por una direcciÃ³n concreta,
+    // aplicar filtros debe mantener esa misma ubicaciÃ³n como referencia.
     // Solo saltamos a ranking por zona cuando se escribe provincia o municipio.
     if (!hasAreaFilter) {
       if (userLocation) {
         await runSmartNearby(
           userLocation.lat,
           userLocation.lon,
-          areaInfo?.label || "ubicación actual",
-          fuel,
+          areaInfo?.label || "ubicaciÃ³n actual",
+          selectedFuel,
           areaInfo
             ? {
                 label: areaInfo.label,
@@ -812,7 +812,7 @@ export default function SearchPage() {
         return;
       }
 
-      await loadNearby(fuel);
+      await loadNearby(selectedFuel);
       return;
     }
 
@@ -820,7 +820,7 @@ export default function SearchPage() {
 
     try {
       const params = new URLSearchParams({
-        fuel,
+        fuel: selectedFuel,
         limit: selectedBrands.length > 0 ? "120" : "25",
       });
 
@@ -849,7 +849,7 @@ export default function SearchPage() {
       localStorage.setItem(
         "lastFuelSearchContext",
         JSON.stringify({
-          fuel,
+          fuel: selectedFuel,
           brands: selectedBrands,
           brand: selectedBrands.join(", "),
           area: { label: municipality || province || selectedBrands.join(", ") || "ranking manual" },
@@ -868,6 +868,56 @@ export default function SearchPage() {
     }
   }
 
+  async function applyFuelChange(nextFuel: string) {
+    setFuel(nextFuel);
+
+    // Si aÃºn no hay resultados, solo cambiamos la selecciÃ³n visual.
+    // AsÃ­ no pedimos ubicaciÃ³n ni hacemos bÃºsquedas automÃ¡ticas antes de tiempo.
+    if (stations.length === 0 && !userLocation && !province.trim() && !municipality.trim() && !selectedAddress) {
+      return;
+    }
+
+    // Si habÃ­a una direcciÃ³n concreta seleccionada, mantenemos esa zona.
+    if (selectedAddress) {
+      await runSmartNearby(
+        selectedAddress.lat,
+        selectedAddress.lon,
+        selectedAddress.label,
+        nextFuel,
+        selectedAddress.area
+      );
+      return;
+    }
+
+    // Si habÃ­a ubicaciÃ³n actual o una bÃºsqueda cercana, recalculamos cerca de esa ubicaciÃ³n.
+    if (userLocation) {
+      await runSmartNearby(
+        userLocation.lat,
+        userLocation.lon,
+        areaInfo?.label || searchAddress || "ubicaciÃ³n actual",
+        nextFuel,
+        areaInfo
+          ? {
+              label: areaInfo.label,
+              municipality: areaInfo.municipality,
+              isMajorCity: areaInfo.isMajorCity,
+            }
+          : undefined
+      );
+      return;
+    }
+
+    // Si hay provincia/municipio, recalculamos el ranking con el nuevo combustible.
+    if (province.trim() || municipality.trim()) {
+      await loadManualRanking(nextFuel);
+      return;
+    }
+
+    // Fallback: si ya habÃ­a bÃºsqueda, reutiliza la lÃ³gica existente.
+    if (stations.length > 0) {
+      await loadNearby(nextFuel);
+    }
+  }
   useEffect(() => {
     loadFilters();
     loadVehicles();
@@ -943,7 +993,7 @@ export default function SearchPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-black text-emerald-600">Buscar gasolineras</p>
-                <h1 className="text-2xl font-black">Encuentra dónde repostar mejor</h1>
+                <h1 className="text-2xl font-black">Encuentra dÃ³nde repostar mejor</h1>
               </div>
 
               {loading && (
@@ -996,7 +1046,7 @@ export default function SearchPage() {
                 onClick={() => loadNearby(fuel)}
                 className="rounded-2xl bg-[#07111f] px-4 py-3 font-black text-white shadow-sm hover:bg-slate-800"
               >
-                📍 Usar mi ubicación
+                ðŸ“ Usar mi ubicaciÃ³n
               </button>
 
               <button
@@ -1008,7 +1058,7 @@ export default function SearchPage() {
             </div>
 
             <p className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600">
-              Al usar tu ubicación, Rivvo la muestra arriba para que sepas qué zona está aplicando. No hacemos seguimiento en segundo plano.
+              Al usar tu ubicaciÃ³n, Rivvo la muestra arriba para que sepas quÃ© zona estÃ¡ aplicando. No hacemos seguimiento en segundo plano.
             </p>
           </div>
 
@@ -1018,7 +1068,7 @@ export default function SearchPage() {
               {fuelOptions.slice(0, 4).map((option) => (
                 <button
                   key={option.value}
-                  onClick={() => setFuel(option.value)}
+                  onClick={() => applyFuelChange(option.value)}
                   className={
                     fuel === option.value
                       ? "rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white"
@@ -1045,8 +1095,8 @@ export default function SearchPage() {
             href="/mis-vehiculos"
             className="rounded-[1.4rem] border border-purple-200 bg-purple-50 px-4 py-4 shadow-sm"
           >
-            <p className="text-xs font-black uppercase text-purple-700">Mis vehículos</p>
-            <p className="mt-1 text-sm font-bold text-purple-950">Añadir coche y aplicar consumo</p>
+            <p className="text-xs font-black uppercase text-purple-700">Mis vehÃ­culos</p>
+            <p className="mt-1 text-sm font-bold text-purple-950">AÃ±adir coche y aplicar consumo</p>
           </Link>
         </div>
 
@@ -1078,7 +1128,7 @@ export default function SearchPage() {
                       >
                         <span>{brandOption}</span>
                         <span className={selected ? "text-blue-600" : "text-slate-300"}>
-                          {selected ? "✓" : "○"}
+                          {selected ? "âœ“" : "â—‹"}
                         </span>
                       </button>
                     );
@@ -1126,7 +1176,7 @@ export default function SearchPage() {
                       className="block w-full px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-yellow-50"
                     >
                       <span className="font-black">{favorite.name}</span>
-                      {favorite.brand && <span className="ml-2 text-slate-500">· {favorite.brand}</span>}
+                      {favorite.brand && <span className="ml-2 text-slate-500">Â· {favorite.brand}</span>}
                     </button>
                   ))}
                 </div>
@@ -1134,7 +1184,7 @@ export default function SearchPage() {
             </div>
 
             <div className="relative">
-              <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Mis vehículos</p>
+              <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Mis vehÃ­culos</p>
 
               <button
                 type="button"
@@ -1142,10 +1192,10 @@ export default function SearchPage() {
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-black text-slate-800 shadow-sm hover:bg-slate-50"
               >
                 {selectedVehicleId
-                  ? vehicles.find((vehicle) => vehicle.id === selectedVehicleId)?.name || "Vehículo seleccionado"
+                  ? vehicles.find((vehicle) => vehicle.id === selectedVehicleId)?.name || "VehÃ­culo seleccionado"
                   : vehicles.length > 0
-                    ? "Seleccionar vehículo"
-                    : "Sin vehículos guardados"}
+                    ? "Seleccionar vehÃ­culo"
+                    : "Sin vehÃ­culos guardados"}
               </button>
 
               {vehicleMenuOpen && (
@@ -1164,9 +1214,9 @@ export default function SearchPage() {
                       >
                         <span className="font-black">{vehicle.name}</span>
                         {(vehicle.make || vehicle.model) && (
-                          <span className="ml-2 text-slate-500">· {[vehicle.make, vehicle.model].filter(Boolean).join(" ")}</span>
+                          <span className="ml-2 text-slate-500">Â· {[vehicle.make, vehicle.model].filter(Boolean).join(" ")}</span>
                         )}
-                        <span className="ml-2 text-slate-500">· {vehicle.tankLiters} L · {vehicle.consumption} L/100 km</span>
+                        <span className="ml-2 text-slate-500">Â· {vehicle.tankLiters} L Â· {vehicle.consumption} L/100 km</span>
                       </button>
                     ))
                   ) : (
@@ -1174,7 +1224,7 @@ export default function SearchPage() {
                       href="/mis-vehiculos"
                       className="block px-4 py-3 text-sm font-black text-purple-700 hover:bg-purple-50"
                     >
-                      Añadir vehículo
+                      AÃ±adir vehÃ­culo
                     </Link>
                   )}
                 </div>
@@ -1186,13 +1236,13 @@ export default function SearchPage() {
               onClick={() => setAdvancedFiltersOpen((open) => !open)}
               className="self-end rounded-2xl bg-slate-100 px-5 py-3 text-sm font-black text-slate-800 hover:bg-slate-200"
             >
-              {advancedFiltersOpen ? "Ocultar filtros" : "Más filtros"}
+              {advancedFiltersOpen ? "Ocultar filtros" : "MÃ¡s filtros"}
             </button>
           </div>
 
           {selectedBrands.length > 0 && (
             <p className="mt-3 text-xs font-semibold text-blue-700">
-              El análisis de precio se hará solo con: {selectedBrands.join(", ")}.
+              El anÃ¡lisis de precio se harÃ¡ solo con: {selectedBrands.join(", ")}.
             </p>
           )}
         </div>
@@ -1220,7 +1270,7 @@ export default function SearchPage() {
                   onClick={() => setOtherFuelMenuOpen((open) => !open)}
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-black text-slate-800 shadow-sm hover:bg-slate-50"
                 >
-                  {fuelOptions.slice(4).find((option) => option.value === fuel)?.label || "GLP, GNC, GNL o hidrógeno"}
+                  {fuelOptions.slice(4).find((option) => option.value === fuel)?.label || "GLP, GNC, GNL o hidrÃ³geno"}
                 </button>
 
                 {otherFuelMenuOpen && (
@@ -1231,14 +1281,14 @@ export default function SearchPage() {
                         type="button"
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => {
-                          setFuel(option.value);
+                          void applyFuelChange(option.value);
                           setOtherFuelMenuOpen(false);
                         }}
                         className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-blue-50"
                       >
                         <span>{option.label}</span>
                         <span className={fuel === option.value ? "text-blue-600" : "text-slate-300"}>
-                          {fuel === option.value ? "✓" : "○"}
+                          {fuel === option.value ? "âœ“" : "â—‹"}
                         </span>
                       </button>
                     ))}
@@ -1279,7 +1329,7 @@ export default function SearchPage() {
 
         {areaInfo && (
           <div className="mb-4 rounded-3xl bg-emerald-50 p-4 text-sm text-emerald-900">
-            <strong>{areaInfo.label}</strong> · radio aplicado: <strong>{areaInfo.chosenRadiusKm} km</strong>. {areaInfo.reason}.
+            <strong>{areaInfo.label}</strong> Â· radio aplicado: <strong>{areaInfo.chosenRadiusKm} km</strong>. {areaInfo.reason}.
           </div>
         )}
 
@@ -1300,7 +1350,7 @@ export default function SearchPage() {
                       ? "Mostrando solo tu gasolinera favorita, sin compararla con otras."
                       : selectedBrands.length > 0
                         ? `Ordenadas por ${sortMode === "price" ? "precio" : "distancia"} solo entre: ${selectedBrands.join(", ")}.`
-                        : `Ordenadas por ${sortMode === "price" ? "precio" : "distancia"} dentro de tu búsqueda.`}
+                        : `Ordenadas por ${sortMode === "price" ? "precio" : "distancia"} dentro de tu bÃºsqueda.`}
                   </p>
                 </div>
 
@@ -1316,7 +1366,7 @@ export default function SearchPage() {
                             : "rounded-xl px-4 py-2 text-xs font-black text-slate-700 hover:bg-white"
                         }
                       >
-                        Más baratas
+                        MÃ¡s baratas
                       </button>
 
                       <button
@@ -1328,7 +1378,7 @@ export default function SearchPage() {
                             : "rounded-xl px-4 py-2 text-xs font-black text-slate-700 hover:bg-white"
                         }
                       >
-                        Más cercanas
+                        MÃ¡s cercanas
                       </button>
                     </div>
                   )}
@@ -1354,7 +1404,7 @@ export default function SearchPage() {
 
                 {stations.length === 0 && !loading && (
                   <p className="rounded-3xl bg-slate-50 p-6 text-slate-500">
-                    Todavía no hay resultados. Busca por dirección, usa tu ubicación o aplica filtros desde la barra superior.
+                    TodavÃ­a no hay resultados. Busca por direcciÃ³n, usa tu ubicaciÃ³n o aplica filtros desde la barra superior.
                   </p>
                 )}
               </div>
@@ -1365,3 +1415,4 @@ export default function SearchPage() {
     </main>
   );
 }
+

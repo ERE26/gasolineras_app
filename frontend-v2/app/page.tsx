@@ -121,11 +121,11 @@ export default function Home() {
           JSON.stringify({ ...coords, updatedAt: new Date().toISOString() })
         );
 
-        setLocationStatus("Ranking calculado cerca de ti");
+        setLocationStatus("Ranking calculado con tu ubicación actual");
         loadNearbyRanking(coords.lat, coords.lon, 1);
       },
       () => {
-        setLocationStatus("Permite ubicación para ranking cercano");
+        setLocationStatus("Activa tu ubicación para obtener el ranking personalizado");
         loadGeneralRanking();
       },
       {
@@ -148,7 +148,7 @@ export default function Home() {
         <div className="relative mx-auto grid max-w-7xl items-start gap-8 px-6 py-10 lg:grid-cols-[1.05fr_.95fr] lg:py-14">
           <div>
             <div className="mb-4 inline-flex rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-black text-emerald-700 shadow-sm">
-              ⛽ Datos oficiales · 📍 ubicación en tiempo real
+              ⛽ Datos oficiales · 📍 Ubicación en tiempo real
             </div>
 
             <h1 className="text-5xl font-black leading-tight tracking-tight md:text-6xl">
@@ -193,7 +193,7 @@ export default function Home() {
           </div>
 
           <div className="self-start rounded-[2rem] border border-slate-200 bg-white/95 p-5 shadow-xl shadow-slate-200/70">
-            <p className="text-sm font-black text-emerald-600">Cómo usarla</p>
+            <p className="text-sm font-black text-emerald-600">Cómo funciona Rivvo</p>
             <h2 className="mt-1 text-2xl font-black">Todo lo importante en 3 acciones</h2>
 
             <div className="mt-5 grid gap-3">
@@ -204,9 +204,9 @@ export default function Home() {
                 <div className="flex items-start gap-3">
                   <span className="text-3xl">📍</span>
                   <div>
-                    <h3 className="text-lg font-black">1. Busca cerca de ti</h3>
+                    <h3 className="text-lg font-black">1. Busca gasolineras cerca de ti</h3>
                     <p className="mt-1 text-sm leading-6 text-slate-600">
-                      Usa tu ubicación o escribe una dirección para ver precios reales.
+                      Usa tu ubicación o escribe una dirección para obtener los mejores precios.
                     </p>
                   </div>
                 </div>
@@ -219,9 +219,9 @@ export default function Home() {
                 <div className="flex items-start gap-3">
                   <span className="text-3xl">🚗</span>
                   <div>
-                    <h3 className="text-lg font-black">2. Calcula si compensa</h3>
+                    <h3 className="text-lg font-black">2. Análisi personalizado </h3>
                     <p className="mt-1 text-sm leading-6 text-slate-600">
-                      Añade tus vehículos para un analisis personalizado .
+                      Añade tus vehículos para obtener así un analisis personalizado .
                     </p>
                   </div>
                 </div>
@@ -234,7 +234,7 @@ export default function Home() {
                 <div className="flex items-start gap-3">
                   <span className="text-3xl">🗺️</span>
                   <div>
-                    <h3 className="text-lg font-black">3. Planifica repostajes</h3>
+                    <h3 className="text-lg font-black">3. Planifica tu viaje</h3>
                     <p className="mt-1 text-sm leading-6 text-slate-600">
                       Elige origen, destino y cuándo quieres parar. Te proponemos las mejores estaciones para tu ruta.
                     </p>
@@ -253,7 +253,7 @@ export default function Home() {
             Gasolineras baratas detectadas
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            Si permites ubicación, este ranking se calcula cerca de ti. Si no, se muestra
+            Activa tu ubicación para ver el ranking de las gasolineras mas baratas cerca de ti. Si no, se muestra
             una referencia general.
           </p>
 
