@@ -5,10 +5,10 @@ const config: CapacitorConfig = {
   appName: "Rivvo",
   webDir: "public",
   server: {
-    url: "https://gasolineras-app-mu.vercel.app",
-    cleartext: false,
-    androidScheme: "https",
-  },
+  url: "https://gasolineras-app-mu.vercel.app",
+  cleartext: false,
+  androidScheme: "https",
+},
 };
 
 export default config;

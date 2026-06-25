@@ -201,6 +201,23 @@ function getViewbox(lat: number, lon: number) {
   return `${lon - delta},${lat + delta},${lon + delta},${lat - delta}`;
 }
 
+
+function clearPrivateLocalCache() {
+  if (typeof window === "undefined") return;
+
+  const privateKeys = [
+    "myVehicles",
+    "favoriteStationsFull",
+    "favoriteStationIds",
+    "favoriteStations",
+    "favoriteStationIdsFull",
+    "selectedVehicleId",
+    "selectedFavoriteId",
+  ];
+
+  privateKeys.forEach((key) => window.localStorage.removeItem(key));
+}
+
 export default function SearchPage() {
   const [stations, setStations] = useState<Station[]>([]);
   const [fuel, setFuel] = useState("gasolina95");
@@ -261,20 +278,24 @@ export default function SearchPage() {
     }
   }
 
+  async function applyBrandSelection(nextBrands: string[]) {
+    setSelectedBrands(nextBrands);
+    setBrandMenuOpen(false);
+    await loadManualRanking(fuel, nextBrands);
+    scrollToMapAndResults();
+  }
+
   function toggleBrandSelection(selectedBrand: string) {
-    setSelectedBrands((currentBrands) => {
-      const exists = currentBrands.includes(selectedBrand);
+    const exists = selectedBrands.includes(selectedBrand);
+    const nextBrands = exists
+      ? selectedBrands.filter((brand) => brand !== selectedBrand)
+      : [...selectedBrands, selectedBrand];
 
-      if (exists) {
-        return currentBrands.filter((brand) => brand !== selectedBrand);
-      }
-
-      return [...currentBrands, selectedBrand];
-    });
+    void applyBrandSelection(nextBrands);
   }
 
   function clearBrandSelection() {
-    setSelectedBrands([]);
+    void applyBrandSelection([]);
   }
 
   async function loadAddressSuggestions(query: string) {
@@ -549,6 +570,12 @@ export default function SearchPage() {
   }
 
   function selectVehicle(vehicleId: string) {
+    if (!vehicleId) {
+      setSelectedVehicleId("");
+      setVehicleMenuOpen(false);
+      return;
+    }
+
     setSelectedVehicleId(vehicleId);
     const vehicle = vehicles.find((item) => item.id === vehicleId);
     if (!vehicle) return;
@@ -556,16 +583,22 @@ export default function SearchPage() {
     void applyFuelChange(vehicle.fuel);
   }
 
-  async function fetchNearby(lat: number, lon: number, radiusKm: number, selectedFuel = fuel) {
+  async function fetchNearby(
+    lat: number,
+    lon: number,
+    radiusKm: number,
+    selectedFuel = fuel,
+    brandSelections = selectedBrands
+  ) {
     const params = new URLSearchParams({
       lat: String(lat),
       lon: String(lon),
       fuel: selectedFuel,
       radius: String(radiusKm * 1000),
-      limit: selectedBrands.length > 0 ? "120" : "25",
+      limit: brandSelections.length > 0 ? "120" : "25",
     });
 
-    const apiBrand = getApiBrandFilter(selectedBrands);
+    const apiBrand = getApiBrandFilter(brandSelections);
     if (apiBrand) {
       params.append("brand", apiBrand);
     }
@@ -574,20 +607,24 @@ export default function SearchPage() {
     const data = await response.json();
 
     const result = Array.isArray(data) ? data : [];
-    return filterByBrandSelections(result, selectedBrands).slice(0, 25);
+    return filterByBrandSelections(result, brandSelections).slice(0, 25);
   }
 
-  async function loadReferenceForMunicipality(areaName: string, selectedFuel = fuel) {
+  async function loadReferenceForMunicipality(
+    areaName: string,
+    selectedFuel = fuel,
+    brandSelections = selectedBrands
+  ) {
     if (!areaName || areaName === "tu zona") return null;
 
     try {
       const params = new URLSearchParams({
         fuel: selectedFuel,
         municipality: areaName,
-        limit: selectedBrands.length > 0 ? "150" : "80",
+        limit: brandSelections.length > 0 ? "150" : "80",
       });
 
-      const apiBrand = getApiBrandFilter(selectedBrands);
+      const apiBrand = getApiBrandFilter(brandSelections);
       if (apiBrand) {
         params.append("brand", apiBrand);
       }
@@ -595,7 +632,7 @@ export default function SearchPage() {
       const response = await fetch(`${API_URL}/api/ranking?${params.toString()}`);
       const data = await response.json();
 
-      const filteredStations = filterByBrandSelections(Array.isArray(data) ? data : [], selectedBrands);
+      const filteredStations = filterByBrandSelections(Array.isArray(data) ? data : [], brandSelections);
       const prices = filteredStations
         .map((item: Station) => Number(item.price))
         .filter(Number.isFinite);
@@ -621,7 +658,8 @@ export default function SearchPage() {
     lon: number,
     sourceLabel: string,
     selectedFuel = fuel,
-    areaFromSearch?: { label: string; municipality: string; isMajorCity: boolean }
+    areaFromSearch?: { label: string; municipality: string; isMajorCity: boolean },
+    brandSelections = selectedBrands
   ) {
     setLoading(true);
 
@@ -633,15 +671,15 @@ export default function SearchPage() {
         ? "zona urbana: buscamos primero en 1 km"
         : "zona amplia o afueras: usamos 5 km";
 
-      let nearby = await fetchNearby(lat, lon, firstRadius, selectedFuel);
+      let nearby = await fetchNearby(lat, lon, firstRadius, selectedFuel, brandSelections);
 
       if (area.isMajorCity && nearby.length < 5) {
         radiusToUse = 5;
         reason = "había pocas estaciones en 1 km, ampliamos a 5 km";
-        nearby = await fetchNearby(lat, lon, 5, selectedFuel);
+        nearby = await fetchNearby(lat, lon, 5, selectedFuel, brandSelections);
       }
 
-      const reference = await loadReferenceForMunicipality(area.municipality, selectedFuel);
+      const reference = await loadReferenceForMunicipality(area.municipality, selectedFuel, brandSelections);
 
       setFavoriteOnly(false);
       setSelectedFavoriteId(null);
@@ -660,8 +698,8 @@ export default function SearchPage() {
         "lastFuelSearchContext",
         JSON.stringify({
           fuel: selectedFuel,
-          brands: selectedBrands,
-          brand: selectedBrands.join(", "),
+          brands: brandSelections,
+          brand: brandSelections.join(", "),
           area,
           areaInfo: {
             label: sourceLabel || area.label,
@@ -733,7 +771,7 @@ export default function SearchPage() {
     }
   }
 
-  async function loadNearby(selectedFuel = fuel) {
+  async function loadNearby(selectedFuel = fuel, brandSelections = selectedBrands) {
     setGeolocationHelp(null);
 
     // 1) Reutilizamos ubicación reciente para no volver a encender el GPS.
@@ -742,7 +780,7 @@ export default function SearchPage() {
     if (saved) {
       setUserLocation(saved);
       const locationLabel = await labelCurrentLocation(saved.lat, saved.lon);
-      await runSmartNearby(saved.lat, saved.lon, locationLabel, selectedFuel);
+      await runSmartNearby(saved.lat, saved.lon, locationLabel, selectedFuel, undefined, brandSelections);
       return;
     }
 
@@ -767,7 +805,7 @@ export default function SearchPage() {
         const locationLabel = await labelCurrentLocation(coords.lat, coords.lon);
         setLoading(false);
 
-        await runSmartNearby(coords.lat, coords.lon, locationLabel, selectedFuel);
+        await runSmartNearby(coords.lat, coords.lon, locationLabel, selectedFuel, undefined, brandSelections);
       },
       async () => {
         const fallback = getSavedUserLocation(60 * 60 * 1000);
@@ -776,7 +814,7 @@ export default function SearchPage() {
           setUserLocation(fallback);
           const locationLabel = await labelCurrentLocation(fallback.lat, fallback.lon);
           setLoading(false);
-          runSmartNearby(fallback.lat, fallback.lon, locationLabel, selectedFuel);
+          runSmartNearby(fallback.lat, fallback.lon, locationLabel, selectedFuel, undefined, brandSelections);
           return;
         }
 
@@ -793,7 +831,7 @@ export default function SearchPage() {
     );
   }
 
-  async function loadManualRanking(selectedFuel = fuel) {
+  async function loadManualRanking(selectedFuel = fuel, brandSelections = selectedBrands) {
     const hasAreaFilter = Boolean(province.trim() || municipality.trim());
 
     // Si el usuario ya había buscado por ubicación o por una dirección concreta,
@@ -812,12 +850,13 @@ export default function SearchPage() {
                 municipality: areaInfo.municipality,
                 isMajorCity: areaInfo.isMajorCity,
               }
-            : undefined
+            : undefined,
+          brandSelections
         );
         return;
       }
 
-      await loadNearby(selectedFuel);
+      await loadNearby(selectedFuel, brandSelections);
       return;
     }
 
@@ -826,18 +865,18 @@ export default function SearchPage() {
     try {
       const params = new URLSearchParams({
         fuel: selectedFuel,
-        limit: selectedBrands.length > 0 ? "120" : "25",
+        limit: brandSelections.length > 0 ? "120" : "25",
       });
 
       if (province.trim()) params.append("province", province.trim());
       if (municipality.trim()) params.append("municipality", municipality.trim());
 
-      const apiBrand = getApiBrandFilter(selectedBrands);
+      const apiBrand = getApiBrandFilter(brandSelections);
       if (apiBrand) params.append("brand", apiBrand);
 
       const response = await fetch(`${API_URL}/api/ranking?${params.toString()}`);
       const data = await response.json();
-      const nextStations = filterByBrandSelections(Array.isArray(data) ? data : [], selectedBrands).slice(0, 25);
+      const nextStations = filterByBrandSelections(Array.isArray(data) ? data : [], brandSelections).slice(0, 25);
 
       setFavoriteOnly(false);
       setSelectedFavoriteId(null);
@@ -855,9 +894,9 @@ export default function SearchPage() {
         "lastFuelSearchContext",
         JSON.stringify({
           fuel: selectedFuel,
-          brands: selectedBrands,
-          brand: selectedBrands.join(", "),
-          area: { label: municipality || province || selectedBrands.join(", ") || "ranking manual" },
+          brands: brandSelections,
+          brand: brandSelections.join(", "),
+          area: { label: municipality || province || brandSelections.join(", ") || "ranking manual" },
           areaInfo: null,
           userLocation,
           referencePrice: avg,
@@ -1202,13 +1241,25 @@ export default function SearchPage() {
               >
                 {selectedVehicleId
                   ? vehicles.find((vehicle) => vehicle.id === selectedVehicleId)?.name || "Vehículo seleccionado"
-                  : vehicles.length > 0
-                    ? "Seleccionar vehículo"
-                    : "Sin vehículos guardados"}
+                  : "Otro / sin vehículo"}
               </button>
 
               {vehicleMenuOpen && (
                 <div className="absolute left-0 right-0 top-[76px] z-[9999] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                  <button
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => selectVehicle("")}
+                    className={
+                      !selectedVehicleId
+                        ? "block w-full bg-purple-50 px-4 py-3 text-left text-sm font-black text-purple-800"
+                        : "block w-full px-4 py-3 text-left text-sm font-black text-slate-700 hover:bg-purple-50"
+                    }
+                  >
+                    Otro / sin vehículo
+                    <span className="ml-2 font-semibold text-slate-500">No aplica consumo guardado</span>
+                  </button>
+
                   {vehicles.length > 0 ? (
                     vehicles.map((vehicle) => (
                       <button
@@ -1219,7 +1270,7 @@ export default function SearchPage() {
                           selectVehicle(vehicle.id);
                           setVehicleMenuOpen(false);
                         }}
-                        className="block w-full px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-purple-50"
+                        className="block w-full border-t border-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-purple-50"
                       >
                         <span className="font-black">{vehicle.name}</span>
                         {(vehicle.make || vehicle.model) && (
@@ -1231,7 +1282,7 @@ export default function SearchPage() {
                   ) : (
                     <Link
                       href="/mis-vehiculos"
-                      className="block px-4 py-3 text-sm font-black text-purple-700 hover:bg-purple-50"
+                      className="block border-t border-slate-100 px-4 py-3 text-sm font-black text-purple-700 hover:bg-purple-50"
                     >
                       Añadir vehículo
                     </Link>

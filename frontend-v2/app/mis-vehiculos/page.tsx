@@ -27,7 +27,7 @@ const carCatalog: Record<string, string[]> = {
   Abarth: ["500", "595", "695", "124 Spider"],
   "Alfa Romeo": ["Giulia", "Giulietta", "MiTo", "Stelvio", "Tonale"],
   Audi: ["A1", "A3", "A4", "A5", "A6", "Q2", "Q3", "Q5", "Q7", "Q8", "TT"],
-  BMW: ["Serie 1", "Serie 2", "Serie 3", "Serie 4", "Serie 5", "X1", "X2", "X3", "X5", "X6"],
+  BMW: ["Serie 1", "Serie 2", "Serie 3", "Serie 4", "Serie 5", "X1", "X2", "X3","X4", "X5", "X6"],
   Citroën: ["C1", "C3", "C3 Aircross", "C4", "C4 Cactus", "C5 Aircross", "Berlingo"],
   Cupra: ["Born", "Formentor", "León", "Ateca", "Tavascan"],
   Dacia: ["Sandero", "Logan", "Duster", "Jogger", "Spring"],
