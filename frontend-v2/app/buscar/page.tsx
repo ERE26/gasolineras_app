@@ -1050,7 +1050,7 @@ export default function SearchPage() {
               </button>
 
               <button
-                onClick={loadManualRanking}
+                onClick={() => void loadManualRanking()}
                 className="hidden rounded-2xl bg-blue-600 px-4 py-3 font-black text-white shadow-sm hover:bg-blue-500 sm:block"
               >
                 Aplicar filtros
@@ -1250,7 +1250,7 @@ export default function SearchPage() {
         <div className="mb-4 sm:hidden">
           <button
             type="button"
-            onClick={loadManualRanking}
+            onClick={() => void loadManualRanking()}
             className="w-full rounded-2xl bg-blue-600 px-4 py-3 font-black text-white shadow-sm hover:bg-blue-500"
           >
             Aplicar filtros
@@ -1318,7 +1318,7 @@ export default function SearchPage() {
 
               <button
                 type="button"
-                onClick={loadManualRanking}
+                onClick={() => void loadManualRanking()}
                 className="self-end rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-black text-white hover:bg-emerald-400"
               >
                 Aplicar filtros
@@ -1415,4 +1415,5 @@ export default function SearchPage() {
     </main>
   );
 }
+
 
