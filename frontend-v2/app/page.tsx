@@ -221,7 +221,7 @@ export default function Home() {
                   <div>
                     <h3 className="text-lg font-black">2. Calcula si compensa</h3>
                     <p className="mt-1 text-sm leading-6 text-slate-600">
-                      Añade depósito y consumo para estimar el ahorro frente al desvío.
+                      Añade tus vehículos para un analisis personalizado .
                     </p>
                   </div>
                 </div>
@@ -236,7 +236,7 @@ export default function Home() {
                   <div>
                     <h3 className="text-lg font-black">3. Planifica repostajes</h3>
                     <p className="mt-1 text-sm leading-6 text-slate-600">
-                      Elige origen, destino y cuándo quieres parar. Te proponemos estaciones cerca de la ruta.
+                      Elige origen, destino y cuándo quieres parar. Te proponemos las mejores estaciones para tu ruta.
                     </p>
                   </div>
                 </div>

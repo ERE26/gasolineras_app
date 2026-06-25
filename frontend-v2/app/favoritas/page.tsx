@@ -337,7 +337,6 @@ export default function FavoritesPage() {
 
       <section className="mx-auto max-w-7xl px-6 py-8">
         <div className="mb-6 text-center">
-          <p className="text-sm font-black text-yellow-600">Favoritos inteligentes</p>
           <h1 className="text-4xl font-black">Mis gasolineras favoritas</h1>
           <p className="mx-auto mt-3 max-w-3xl text-slate-600">
             Guarda estaciones habituales y búscalas desde aquí. Puedes buscarlas por
@@ -346,13 +345,13 @@ export default function FavoritesPage() {
 
           {!userId && !syncing && (
             <p className="mx-auto mt-4 max-w-3xl rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
-              Estás sin iniciar sesión. Puedes probarlo, pero para guardar favoritas en tu perfil entra con tu cuenta.
+              No estas conectado a tu cuenta. Inicia sesión o Crea una nueva cuenta para poder guardar tus estaciones favoritas en tu perfil.
             </p>
           )}
 
           {userId && (
             <p className="mx-auto mt-4 max-w-3xl rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
-              Favoritas sincronizadas con tu perfil.
+             Mis estaciones de servicio favoritas.
             </p>
           )}
         </div>
@@ -361,8 +360,7 @@ export default function FavoritesPage() {
           <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-black">Favoritas guardadas</h2>
-                <p className="text-sm text-slate-500">{userId ? "Se guardan en tu perfil." : "Se guardan en tu navegador hasta que entres."}</p>
+                <h2 className="text-2xl font-black">FAVORITOS </h2>
               </div>
 
               <Link

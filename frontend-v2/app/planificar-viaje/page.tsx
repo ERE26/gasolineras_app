@@ -580,7 +580,7 @@ export default function TripPlannerPage() {
               <p className="text-sm font-black text-blue-600">Planifica tu viaje</p>
               <h1 className="text-3xl font-black">Planifica dónde repostar</h1>
               <p className="mt-2 max-w-3xl text-sm font-bold leading-6 text-slate-500">
-                Elige origen, destino y una parada sencilla: por horas, por kilómetros o por una dirección concreta.
+                Elige origen, destino y el número de paradas que quieres hacer.
               </p>
             </div>
 
@@ -824,7 +824,7 @@ export default function TripPlannerPage() {
                         onChange={(event) => setSortBy(event.target.value as "price" | "distance" | "balanced")}
                         className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-bold outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
                       >
-                        <option value="balanced">Equilibrio precio/desvío</option>
+                        <option value="balanced">Equilibrada precio/desvío</option>
                         <option value="price">Más barata</option>
                         <option value="distance">Menor desvío</option>
                       </select>
@@ -903,9 +903,7 @@ export default function TripPlannerPage() {
                 >
                   {loading ? "Analizando viaje..." : "Analizar viaje"}
                 </button>
-                <p className="mt-2 text-center text-xs font-semibold text-slate-500">
-                  Calcularemos el trayecto y las paradas recomendadas sin que tengas que volver arriba.
-                </p>
+
               </div>
             </div>
           </section>

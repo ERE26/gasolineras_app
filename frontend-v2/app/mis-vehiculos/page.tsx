@@ -219,12 +219,12 @@ export default function VehiclesPage() {
           <p className="text-sm font-black text-purple-600">Mis vehículos</p>
           <h1 className="text-4xl font-black">Vehículos y consumo</h1>
           <p className="mt-2 max-w-3xl text-slate-600">
-            Guarda depósito y consumo para calcular el coste real de repostar y desplazarte.
+            Guarda tus vehículos, sus depósitos y su consumo para calcular el coste real de repostar y desplazarte.
           </p>
 
           {!userId && !syncing && (
             <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
-              Estás sin iniciar sesión. Puedes probarlo, pero para guardar tus vehículos en tu perfil entra con tu cuenta.
+              No estas conectado a tu cuenta. Inicia sesión o Crea una nueva cuenta para poder guardar tus estaciones favoritas en tu perfil.
             </p>
           )}
 
@@ -416,7 +416,7 @@ export default function VehiclesPage() {
               </div>
 
               <div className="rounded-3xl bg-purple-50 p-4 text-sm text-purple-900">
-                El depósito sirve para calcular cuánto pagas al llenar. El consumo sirve
+                El depósito sirve para calcular cuánto pagas al llenar. El consumo lo utilizaremos
                 para estimar si compensa desviarte.
               </div>
 
