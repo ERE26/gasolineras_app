@@ -232,6 +232,7 @@ export default function SearchPage() {
   const [areaInfo, setAreaInfo] = useState<AreaInfo | null>(null);
   const [referencePrice, setReferencePrice] = useState<number | null>(null);
   const [sortMode, setSortMode] = useState<"price" | "distance">("price");
+  const [geolocationHelp, setGeolocationHelp] = useState<string | null>(null);
 
   async function requestUserLocation() {
     // Al abrir la pantalla NO encendemos el GPS.
@@ -733,6 +734,8 @@ export default function SearchPage() {
   }
 
   async function loadNearby(selectedFuel = fuel) {
+    setGeolocationHelp(null);
+
     // 1) Reutilizamos ubicación reciente para no volver a encender el GPS.
     const saved = userLocation || getSavedUserLocation();
 
@@ -745,7 +748,8 @@ export default function SearchPage() {
 
     // 2) Solo pedimos ubicación cuando el usuario pulsa el botón.
     if (!navigator.geolocation) {
-      alert("Tu navegador no permite geolocalización.");
+      setGeolocationHelp("Safari o tu navegador no permite geolocalización en este momento. Puedes escribir una dirección manualmente o revisar Ajustes → Safari → Ubicación.");
+      alert("Tu navegador no permite geolocalización. Escribe una dirección manualmente o revisa los permisos de Safari.");
       return;
     }
 
@@ -776,7 +780,8 @@ export default function SearchPage() {
           return;
         }
 
-        alert("No se ha podido obtener tu ubicación. Revisa los permisos de ubicación del navegador.");
+        setGeolocationHelp("No se ha podido obtener tu ubicación. En iPhone revisa Ajustes → Privacidad y seguridad → Localización → Safari Websites y ponlo en Preguntar o Permitir. También puedes escribir una dirección manualmente.");
+        alert("No se ha podido obtener tu ubicación. Revisa los permisos de ubicación del navegador o escribe una dirección manualmente.");
         setLoading(false);
       },
       {
@@ -868,62 +873,6 @@ export default function SearchPage() {
     }
   }
 
-  async function applyFuelChange(nextFuel: string) {
-    setFuel(nextFuel);
-
-    // Si todavía no hay búsqueda activa, solo cambiamos la selección visual.
-    if (
-      stations.length === 0 &&
-      !userLocation &&
-      !province.trim() &&
-      !municipality.trim() &&
-      !selectedAddress
-    ) {
-      return;
-    }
-
-    // Si había una dirección seleccionada, mantenemos esa zona.
-    if (selectedAddress) {
-      await runSmartNearby(
-        selectedAddress.lat,
-        selectedAddress.lon,
-        selectedAddress.label,
-        nextFuel,
-        selectedAddress.area
-      );
-      return;
-    }
-
-    // Si había ubicación activa, recalculamos cerca de esa ubicación.
-    if (userLocation) {
-      await runSmartNearby(
-        userLocation.lat,
-        userLocation.lon,
-        areaInfo?.label || searchAddress || "ubicación actual",
-        nextFuel,
-        areaInfo
-          ? {
-              label: areaInfo.label,
-              municipality: areaInfo.municipality,
-              isMajorCity: areaInfo.isMajorCity,
-            }
-          : undefined
-      );
-      return;
-    }
-
-    // Si hay filtros manuales de provincia/municipio, recalculamos el ranking.
-    if (province.trim() || municipality.trim()) {
-      await loadManualRanking(nextFuel);
-      return;
-    }
-
-    // Último fallback: si había resultados, refrescamos cerca de la ubicación guardada.
-    if (stations.length > 0) {
-      await loadNearby(nextFuel);
-    }
-  }
-
   useEffect(() => {
     loadFilters();
     loadVehicles();
@@ -951,6 +900,72 @@ export default function SearchPage() {
   }, [searchAddress, userLocation, selectedAddress]);
 
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === selectedVehicleId);
+
+
+
+  async function applyFuelChange(nextFuel: string) {
+    setFuel(nextFuel);
+
+    // Si todavía no se ha hecho ninguna búsqueda, solo cambiamos la selección visual.
+    if (stations.length === 0 && !userLocation && !selectedAddress && !province.trim() && !municipality.trim()) {
+      return;
+    }
+
+    // Si había una dirección seleccionada, repetimos esa búsqueda con el nuevo combustible.
+    if (selectedAddress) {
+      await runSmartNearby(
+        selectedAddress.lat,
+        selectedAddress.lon,
+        selectedAddress.label,
+        nextFuel,
+        selectedAddress.area
+      );
+      return;
+    }
+
+    // Si había una ubicación de referencia, mantenemos esa misma zona.
+    if (userLocation) {
+      await runSmartNearby(
+        userLocation.lat,
+        userLocation.lon,
+        areaInfo?.label || searchAddress || "ubicación actual",
+        nextFuel,
+        areaInfo
+          ? {
+              label: areaInfo.label,
+              municipality: areaInfo.municipality,
+              isMajorCity: areaInfo.isMajorCity,
+            }
+          : undefined
+      );
+      return;
+    }
+
+    // Si se está usando provincia/municipio, actualizamos el ranking manual.
+    if (province.trim() || municipality.trim()) {
+      await loadManualRanking(nextFuel);
+      return;
+    }
+
+    if (stations.length > 0) {
+      await loadNearby(nextFuel);
+    }
+  }
+
+
+  function scrollToMapAndResults() {
+    window.setTimeout(() => {
+      document.getElementById("map-and-results")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 150);
+  }
+
+  async function applyQuickFuelChange(nextFuel: string) {
+    await applyFuelChange(nextFuel);
+    scrollToMapAndResults();
+  }
 
   const visibleAveragePrice = useMemo(() => {
     if (referencePrice !== null) return referencePrice;
@@ -1021,7 +1036,7 @@ export default function SearchPage() {
               />
 
               {searchAddress.trim().length >= 3 && addressSuggestions.length > 0 && (
-                <div className="absolute left-0 right-0 top-[54px] z-50 max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                <div className="absolute left-0 right-0 top-[54px] z-[9999] max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
                   {addressSuggestions.map((suggestion) => (
                     <button
                       key={`${suggestion.lat}-${suggestion.lon}-${suggestion.label}`}
@@ -1042,14 +1057,14 @@ export default function SearchPage() {
 
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
               <button
-                onClick={() => void searchByAddress()}
+                onClick={searchByAddress}
                 className="rounded-2xl bg-emerald-500 px-4 py-3 font-black text-white shadow-sm shadow-emerald-100 hover:bg-emerald-400"
               >
                 Buscar zona
               </button>
 
               <button
-                onClick={() => void loadNearby(fuel)}
+                onClick={() => loadNearby(fuel)}
                 className="rounded-2xl bg-[#07111f] px-4 py-3 font-black text-white shadow-sm hover:bg-slate-800"
               >
                 📍 Usar mi ubicación
@@ -1066,6 +1081,12 @@ export default function SearchPage() {
             <p className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600">
               Al usar tu ubicación, Rivvo la muestra arriba para que sepas qué zona está aplicando. No hacemos seguimiento en segundo plano.
             </p>
+
+            {geolocationHelp && (
+              <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-900">
+                {geolocationHelp}
+              </div>
+            )}
           </div>
 
           <div className="self-start rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
@@ -1074,7 +1095,7 @@ export default function SearchPage() {
               {fuelOptions.slice(0, 4).map((option) => (
                 <button
                   key={option.value}
-                  onClick={() => void applyFuelChange(option.value)}
+                  onClick={() => void applyQuickFuelChange(option.value)}
                   className={
                     fuel === option.value
                       ? "rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white"
@@ -1088,25 +1109,7 @@ export default function SearchPage() {
           </div>
         </div>
 
-        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:hidden">
-          <Link
-            href="/favoritas"
-            className="rounded-[1.4rem] border border-amber-200 bg-amber-50 px-4 py-4 shadow-sm"
-          >
-            <p className="text-xs font-black uppercase text-amber-700">Mis estaciones favoritas</p>
-            <p className="mt-1 text-sm font-bold text-amber-950">Ver y usar tus gasolineras guardadas</p>
-          </Link>
-
-          <Link
-            href="/mis-vehiculos"
-            className="rounded-[1.4rem] border border-purple-200 bg-purple-50 px-4 py-4 shadow-sm"
-          >
-            <p className="text-xs font-black uppercase text-purple-700">Mis vehículos</p>
-            <p className="mt-1 text-sm font-bold text-purple-950">Añadir coche y aplicar consumo</p>
-          </Link>
-        </div>
-
-        <div className="relative z-[80] mb-4 rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="relative z-[120] mb-4 rounded-[1.8rem] border border-slate-200 bg-white p-4 shadow-sm">
           <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
             <div className="relative">
               <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Marcas</p>
@@ -1120,7 +1123,7 @@ export default function SearchPage() {
               </button>
 
               {brandMenuOpen && (
-                <div className="absolute left-0 right-0 top-[76px] z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                <div className="absolute left-0 right-0 top-[76px] z-[9999] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
                   {brandOptions.map((brandOption) => {
                     const selected = selectedBrands.includes(brandOption);
 
@@ -1169,7 +1172,7 @@ export default function SearchPage() {
               </button>
 
               {favoriteMenuOpen && favoriteStationsFull.length > 0 && (
-                <div className="absolute left-0 right-0 top-[76px] z-50 max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                <div className="absolute left-0 right-0 top-[76px] z-[9999] max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
                   {favoriteStationsFull.map((favorite) => (
                     <button
                       key={favorite.id}
@@ -1205,7 +1208,7 @@ export default function SearchPage() {
               </button>
 
               {vehicleMenuOpen && (
-                <div className="absolute left-0 right-0 top-[76px] z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                <div className="absolute left-0 right-0 top-[76px] z-[9999] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
                   {vehicles.length > 0 ? (
                     vehicles.map((vehicle) => (
                       <button
@@ -1280,7 +1283,7 @@ export default function SearchPage() {
                 </button>
 
                 {otherFuelMenuOpen && (
-                  <div className="absolute left-0 right-0 top-[76px] z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                  <div className="absolute left-0 right-0 top-[76px] z-[9999] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
                     {fuelOptions.slice(4).map((option) => (
                       <button
                         key={option.value}
@@ -1339,7 +1342,7 @@ export default function SearchPage() {
           </div>
         )}
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(390px,.95fr)]">
+        <div id="map-and-results" className="scroll-mt-24 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(390px,.95fr)]">
           <section className="space-y-4 xl:order-2">
             <div className="h-[520px] overflow-hidden rounded-[1.8rem] border border-slate-200 bg-white shadow-sm">
               <GasMap stations={stations} userLocation={userLocation} />
