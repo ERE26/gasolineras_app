@@ -72,6 +72,12 @@ export default function PerfilPage() {
     }
 
     setEmail(data.user.email || "");
+    setEmail(data.user.email || "");
+
+    await supabase.from("user_profiles").upsert({
+      id: data.user.id,
+      email: data.user.email,
+    });
     setCreatedAt(data.user.created_at || "");
     setLastSignInAt(data.user.last_sign_in_at || "");
 
