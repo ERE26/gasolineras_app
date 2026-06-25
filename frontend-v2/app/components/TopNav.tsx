@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabaseClient";
 
 const navItems = [
   { href: "/", label: "Inicio" },
@@ -15,6 +16,27 @@ const navItems = [
 export default function TopNav() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (active) setEmail(data.user?.email || null);
+    });
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setEmail(session?.user?.email || null);
+    });
+
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  const accountHref = email ? "/perfil" : "/login";
+  const accountLabel = email ? "Mi cuenta" : "Log In";
 
   function isActivePath(href: string) {
     return href === "/"
@@ -58,7 +80,7 @@ export default function TopNav() {
                 href={item.href}
                 className={
                   active
-                    ? "whitespace-nowrap rounded-2xl bg-[#14B8A6]/15 px-4 py-2 text-sm font-black text-[#0B132B] ring-1 ring-[#14B8A6]/30 shadow-sm"
+                    ? "whitespace-nowrap rounded-2xl bg-[#14B8A6]/15 px-4 py-2 text-sm font-black text-[#0B132B] shadow-sm ring-1 ring-[#14B8A6]/30"
                     : "whitespace-nowrap rounded-2xl px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-100"
                 }
               >
@@ -70,20 +92,20 @@ export default function TopNav() {
 
         <div className="hidden items-center gap-2 lg:flex">
           <Link
-            href="/login"
+            href={accountHref}
             className="rounded-full bg-[#0B132B] px-5 py-2.5 text-sm font-black text-white shadow-sm hover:opacity-90"
           >
-            Entrar
+            {accountLabel}
           </Link>
         </div>
 
         <div className="flex items-center gap-2 lg:hidden">
           <Link
-            href="/login"
+            href={accountHref}
             onClick={closeMenu}
             className="rounded-full bg-[#0B132B] px-4 py-2 text-sm font-black text-white shadow-sm"
           >
-            Entrar
+            {accountLabel}
           </Link>
 
           <button
@@ -134,27 +156,32 @@ export default function TopNav() {
                     }
                   >
                     <span>{item.label}</span>
-                    <span className="text-lg text-slate-400">›</span>
+                    {active ? <span>✓</span> : null}
                   </Link>
                 );
               })}
 
               <Link
-                href="/onboarding"
+                href={accountHref}
                 onClick={closeMenu}
-                className="mt-2 rounded-2xl bg-[#0B132B] px-4 py-3 text-center text-base font-black text-white shadow-sm"
+                className="mt-1 rounded-2xl bg-[#0B132B] px-4 py-3 text-base font-black text-white"
               >
-                Primeros pasos
+                {accountLabel}
               </Link>
 
-              <div className="grid grid-cols-3 gap-2 pt-2 text-center text-xs font-bold text-slate-500">
-                <Link href="/privacidad" onClick={closeMenu} className="rounded-xl bg-slate-50 px-2 py-2">
+              <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
+                <Link
+                  href="/privacidad"
+                  onClick={closeMenu}
+                  className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600"
+                >
                   Privacidad
                 </Link>
-                <Link href="/aviso-legal" onClick={closeMenu} className="rounded-xl bg-slate-50 px-2 py-2">
-                  Aviso legal
-                </Link>
-                <Link href="/contacto" onClick={closeMenu} className="rounded-xl bg-slate-50 px-2 py-2">
+                <Link
+                  href="/contacto"
+                  onClick={closeMenu}
+                  className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600"
+                >
                   Contacto
                 </Link>
               </div>
