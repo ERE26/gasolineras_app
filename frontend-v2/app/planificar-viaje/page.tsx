@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import TopNav from "../components/TopNav";
+import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type Vehicle = {
   id: string;
   name: string;
+  make?: string;
+  model?: string;
   fuel: string;
   tankLiters: number;
   consumption: number;
@@ -304,6 +307,7 @@ export default function TripPlannerPage() {
   const [sortBy, setSortBy] = useState<"price" | "distance" | "balanced">("balanced");
   const [stops, setStops] = useState<StopForm[]>([{ mode: "hours-from-start", value: "2" }]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehiclesLoading, setVehiclesLoading] = useState(true);
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [result, setResult] = useState<TripResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -324,15 +328,85 @@ export default function TripPlannerPage() {
   }
 
   useEffect(() => {
-    const saved = localStorage.getItem("myVehicles");
+    let mounted = true;
 
-    if (!saved) return;
+    async function loadSavedVehicles() {
+      setVehiclesLoading(true);
 
-    try {
-      setVehicles(JSON.parse(saved));
-    } catch {
-      setVehicles([]);
+      function loadLocalVehicles() {
+        const saved = localStorage.getItem("myVehicles");
+
+        if (!saved) {
+          setVehicles([]);
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(saved);
+          setVehicles(Array.isArray(parsed) ? parsed : []);
+        } catch {
+          setVehicles([]);
+        }
+      }
+
+      try {
+        if (!isSupabaseConfigured) {
+          loadLocalVehicles();
+          return;
+        }
+
+        const { data } = await supabase.auth.getUser();
+        const user = data.user;
+
+        if (!mounted) return;
+
+        if (!user) {
+          loadLocalVehicles();
+          return;
+        }
+
+        const { data: rows, error } = await supabase
+          .from("user_vehicles")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (!mounted) return;
+
+        if (error) {
+          console.error("No se pudieron cargar los vehículos guardados", error);
+          loadLocalVehicles();
+          return;
+        }
+
+        const nextVehicles: Vehicle[] = (rows || []).map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          make: row.make || undefined,
+          model: row.model || undefined,
+          fuel: row.fuel,
+          tankLiters: Number(row.tank_liters || 0),
+          consumption: Number(row.consumption || 0),
+        }));
+
+        setVehicles(nextVehicles);
+
+        if (nextVehicles.length > 0) {
+          setSelectedVehicleId((current) => current || nextVehicles[0].id);
+          if (nextVehicles[0].fuel) setFuel(nextVehicles[0].fuel);
+        }
+      } catch (error) {
+        console.error("Error cargando vehículos en planificador", error);
+        loadLocalVehicles();
+      } finally {
+        if (mounted) setVehiclesLoading(false);
+      }
     }
+
+    loadSavedVehicles();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const selectedVehicle = useMemo(
@@ -716,7 +790,11 @@ export default function TripPlannerPage() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <p className="mb-2 text-sm font-black">Vehículo</p>
-                      {vehicles.length > 0 ? (
+                      {vehiclesLoading ? (
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-500">
+                          Cargando vehículos guardados...
+                        </div>
+                      ) : vehicles.length > 0 ? (
                         <select
                           value={selectedVehicleId}
                           onChange={(event) => selectVehicle(event.target.value)}
@@ -725,7 +803,7 @@ export default function TripPlannerPage() {
                           <option value="">Sin vehículo concreto</option>
                           {vehicles.map((vehicle) => (
                             <option key={vehicle.id} value={vehicle.id}>
-                              {vehicle.name} · {vehicle.tankLiters} L · {vehicle.consumption} L/100 km
+                              {vehicle.make || vehicle.model ? `${vehicle.make || ""} ${vehicle.model || ""}`.trim() : vehicle.name} · {vehicle.tankLiters} L · {vehicle.consumption} L/100 km
                             </option>
                           ))}
                         </select>
