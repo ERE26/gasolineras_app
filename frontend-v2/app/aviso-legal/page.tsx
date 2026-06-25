@@ -32,10 +32,7 @@ export default function AvisoLegalPage() {
                 localizar gasolineras y ayudar al usuario a estimar ahorro en repostajes.
               </p>
               <p className="mt-2">
-                Titular provisional: Eduardo Rodríguez Esteban. Contacto:
-                <a className="font-semibold text-[#2563EB] hover:underline" href="mailto:eduardorodriguezesteban.afz@gmail.com">
-                  {" "}eduardorodriguezesteban.afz@gmail.com
-                </a>.
+                Titular provisional:RIVVO TEAM
               </p>
             </section>
 

@@ -30,10 +30,8 @@ export default function ContactoPage() {
               Email de contacto
             </p>
             <a
-              href="mailto:eduardorodriguezesteban.afz@gmail.com"
               className="mt-2 block break-words text-xl font-black text-[#2563EB] hover:underline"
             >
-              eduardorodriguezesteban.afz@gmail.com
             </a>
           </div>
 

@@ -33,10 +33,7 @@ export default function PrivacidadPage() {
                 y con qué finalidad.
               </p>
               <p className="mt-2">
-                Responsable provisional: Eduardo Rodríguez Esteban. Email de contacto:
-                <a className="font-semibold text-[#2563EB] hover:underline" href="mailto:eduardorodriguezesteban.afz@gmail.com">
-                  {" "}eduardorodriguezesteban.afz@gmail.com
-                </a>.
+                Responsable provisional:RIVVO TEAM
               </p>
             </section>
 
