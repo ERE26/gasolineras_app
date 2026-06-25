@@ -1,12 +1,5 @@
 @import "tailwindcss";
 
-:root {
-  --rivvo-teal: #14b8a6;
-  --rivvo-navy: #0b132b;
-  --rivvo-blue: #2563eb;
-  --rivvo-surface: #f7f9fc;
-}
-
 * {
   box-sizing: border-box;
 }
@@ -18,7 +11,7 @@ html {
 html,
 body {
   margin: 0;
-  background: var(--rivvo-surface);
+  background: #f7f9fc;
 }
 
 body {
@@ -29,11 +22,6 @@ button,
 a,
 input {
   -webkit-tap-highlight-color: transparent;
-}
-
-::selection {
-  background: rgba(20, 184, 166, 0.18);
-  color: var(--rivvo-navy);
 }
 
 .leaflet-container {
@@ -62,3 +50,38 @@ input {
 .leaflet-control-attribution {
   font-size: 10px;
 }
+
+/* v7.1 — Fix: el mapa no debe tapar desplegables/filtros.
+   Leaflet usa z-index internos altos; los bajamos para que los menús de Rivvo queden encima. */
+.leaflet-container {
+  z-index: 0 !important;
+}
+
+.leaflet-pane,
+.leaflet-map-pane,
+.leaflet-tile-pane,
+.leaflet-overlay-pane,
+.leaflet-shadow-pane,
+.leaflet-marker-pane,
+.leaflet-tooltip-pane,
+.leaflet-popup-pane,
+.leaflet-control-container,
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 0 !important;
+}
+
+.leaflet-control {
+  z-index: 1 !important;
+}
+
+/* Cualquier bloque de filtros/autocomplete de Rivvo debe ganar al mapa. */
+[data-rivvo-filters],
+.rivvo-filters,
+.rivvo-dropdown,
+.rivvo-autocomplete,
+.rivvo-popover {
+  position: relative;
+  z-index: 9999 !important;
+}
+
